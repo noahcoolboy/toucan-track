@@ -1,0 +1,53 @@
+{
+    /* MAIN SETTINGS */
+    "ip": "192.168.1.110", // Local IP address of the headset to send OSC positions to.
+    "port": 9000, // OSC port
+    "debug": true, // Shows debug gui. (May bottleneck FPS, use when having issues)
+    "resolution": 1,  // 0 = 320x240, 1 = 640x480
+    "color": 1,  // 0 = grayscale, 1 = color
+    "fps": 50, // Sets the framerate of the camera.
+    
+
+    /* FILTERING OPTIONS
+
+        Each filter value must contain a be null or an object 
+        If it's an object, it must contain a "type" property.
+        The "type" property must be one of: "Raw", "MovingAverage", "OneEuro".
+
+        If set to null, or type is set to raw, no filter will be applied.
+        The raw data will be used. This may cause jitter.
+
+        if type is set to "MovingAverage", the filter will use the
+        "window_size" property to determine the size of the window.
+        A greater window_size means less jitter, but more latency.
+        - "window_size" must be an integer greater than 0. (default: 5)
+
+        if type is set to "OneEuro", the filter will use the
+        "mincutoff", "beta", and "dcutoff" properties to determine
+        the filter parameters.
+        - "mincutoff" must be a float greater than 0. (default: 0.05)
+        - "beta" must be a float greater than 0. (default: 80.0)
+        - "dcutoff" must be a float greater than 0. (default: 1.0)
+    */
+
+    // The filter applied to the 2d keypoints detected by the model.
+    "2d_filter": {
+        "type": "MovingAverage",
+        "window_size": 5
+    },
+
+    // The filter applied to the triangulated 3d keypoints.
+    "3d_filter": {
+        "type": "OneEuro",
+        "mincutoff": 0.05,
+        "beta": 80.0,
+        "dcutoff": 1.0
+    },
+
+    /* ADVANCED SETTINGS */
+    "undistort": true, // Wether to undistort the camera images to accomodate for lens distortion.
+    "pose_det_min_score": 0.75, // The minimum confidence score for the pose detection model to detect a person.
+    "pose_lm_min_score": 0.3, // The mininum confidence score for the pose landmark model for a person being in the image.
+    "refine_kernel_size": 7, // The size of the kernel used to refine the keypoints (from the heatmap).
+    "refine_min_score": 0.5 // The minimum confidence for the heatmap to be used for refining the keypoints.
+}

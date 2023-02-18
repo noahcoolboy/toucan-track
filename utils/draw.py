@@ -62,11 +62,16 @@ def display_result(img, landmarks, flags, roi):
 
 #region Pose Debug
 from matplotlib import pyplot as plt
-lines_3d = []
-parents = np.array([-1, 0, 1, 2, 0, 4, 5, 3, 6, -1, 9, -1, 11, 11, 12, 13, 14, 15, 16, 15, 16, 15, 16, 11, 12, 23, 24, 25, 26, 27, 28])
-joints_right = []
+# Believe it or not, this is the most efficient way to draw the skeleton
+connections_body = [33, 24, 26, 28, 32, 30, 28, 26, 24, 12, 14, 16, 18, 20, 16, 22, 16, 14, 12, 11, 13, 15, 17, 19, 15, 21, 13, 11, 23, 25, 27, 29, 31, 27, 25, 23, 24]
+connections_face = [8, 6, 5, 4, 0, 1, 2, 3, 7]
+lines_body = None
+lines_face = None
+fig = None
 
 def init_pose_plot(size = 6, radius = 2.5):
+    global lines_body, lines_face, fig
+
     plt.ioff()
     fig = plt.figure(figsize=(size, size))
 
@@ -82,23 +87,21 @@ def init_pose_plot(size = 6, radius = 2.5):
     ax.dist = 12.5
     ax.set_title("Visualisation")
     
-    for j, j_parent in enumerate(parents):
-        #if j_parent == -1:
-        #    continue
-
-        col = 'red' if j in joints_right else 'black'
-        lines_3d.append(ax.plot([0, 0], [0, 0], [0, 0], zdir='y', c=col))
+    lines_body = ax.plot([0, 0], [0, 0], [0, 0], zdir='y', c='black')
+    lines_face = ax.plot([0, 0], [0, 0], [0, 0], zdir='y', c='red')
     
     plt.show(block=False)
 
 def update_pose_plot(pos):
-    for j, j_parent in enumerate(parents):
-        if j_parent == -1:
-            continue
-        
-        lines_3d[j - 1][0].set_xdata(np.array([pos[j, 0], pos[j_parent, 0]])) # Hotfix matplotlib's bug. https://github.com/matplotlib/matplotlib/pull/20555
-        lines_3d[j - 1][0].set_ydata([pos[j, 1], pos[j_parent, 1]])
-        lines_3d[j - 1][0].set_3d_properties([pos[j, 2], pos[j_parent, 2]], zdir='y')
+    lines_body[0].set_xdata(pos[connections_body, 0])
+    lines_body[0].set_ydata(pos[connections_body, 1])
+    lines_body[0].set_3d_properties(pos[connections_body, 2], zdir='y')
 
-    #plt.draw()
+    lines_face[0].set_xdata(pos[connections_face, 0])
+    lines_face[0].set_ydata(pos[connections_face, 1])
+    lines_face[0].set_3d_properties(pos[connections_face, 2], zdir='y')
+
+def draw_plot():
+    fig.canvas.draw()
+    fig.canvas.flush_events()
 #endregion

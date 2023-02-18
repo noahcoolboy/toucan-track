@@ -203,7 +203,10 @@ def pose_landmark_post_thread():
 
 proj0 = vision.get_projection_matrix(0)
 proj1 = vision.get_projection_matrix(1)
-draw.init_pose_plot()
+
+if settings.get("draw_pose", False) and settings.get("debug", False):
+    draw.init_pose_plot()
+
 # Calculate pose from 3d points and send it to the OSC server
 def triangulation_thread():
     start = time.time()
@@ -228,11 +231,11 @@ def triangulation_thread():
         t = time.time() * 1000
         for i in range(39):
             points[i] = smoothing[i].filter(points[i], t)
-        draw.update_pose_plot(points)
-        
+
         pose.calc_pose(points, client)
 
-import matplotlib.pyplot as plt
+        if settings.get("draw_pose", False) and settings.get("debug", False):
+            draw.update_pose_plot(points)
 
 if __name__ == "__main__":
     #region Thread Management
@@ -255,8 +258,12 @@ if __name__ == "__main__":
 
     # do nothing until keyboard interrupt
     try:
-        while True:
-            plt.pause(0.001)
+        if settings.get("draw_pose", False) and settings.get("debug", False):
+            while True:
+                draw.draw_plot()
+        else:
+            while True:
+                time.sleep(1)
     except KeyboardInterrupt:
         running = False
         time.sleep(0.1)

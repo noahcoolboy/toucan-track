@@ -76,7 +76,7 @@ def init_pose_plot(size = 6, radius = 2.5):
     fig = plt.figure(figsize=(size, size))
 
     ax = fig.add_subplot(1, 1, 1, projection='3d')
-    ax.view_init(elev=15., azim=np.array(70., dtype=np.float32))
+    ax.view_init(elev=15., azim=np.array(15., dtype=np.float32))
     ax.set_xlim3d([-radius / 2, radius / 2])
     ax.set_zlim3d([0, radius])
     ax.set_ylim3d([-radius / 2, radius / 2])

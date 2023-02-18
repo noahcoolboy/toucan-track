@@ -227,7 +227,9 @@ def triangulation_thread():
         # Calculate and smooth 3D points
         points = vision.get_depth(proj0, proj1, values[0][1][:, 0:2].transpose(), values[1][1][:, 0:2].transpose()) 
         points = points.squeeze() / 100 # (39, 3)
-        points = -points
+        #points = -points
+        # swap x and z
+        points[:, [0, 2]] = points[:, [2, 0]]
         t = time.time() * 1000
         for i in range(39):
             points[i] = smoothing[i].filter(points[i], t)

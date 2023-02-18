@@ -9,7 +9,7 @@ import camera.binding as camera
 
 calibration_settings = {
     "resolution": camera.CLEyeCameraResolution.CLEYE_VGA, # 640x480, pick QVGA for 320x240
-    "mono_calibration_frames": 25,
+    "mono_calibration_frames": 50,
     "stereo_calibration_frames": 50,
     "assume_accurate": True, # Skips manual validation of checkerboard detection
     "checkerboard_box_size_scale" : 4, # 4cm
@@ -172,8 +172,8 @@ def save_frames_two_cams(camera0_name, camera1_name):
     number_to_save = calibration_settings['stereo_calibration_frames']
 
     #open the video streams
-    cap0 = camera.Camera(camera0_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 60)
-    cap1 = camera.Camera(camera1_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 60)
+    cap0 = camera.Camera(camera0_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cap1 = camera.Camera(camera1_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
 
     cooldown = cooldown_time
     start = False
@@ -355,8 +355,8 @@ def get_depth(proj0, proj1, points0, points1):
     return point3d
 
 def check_calibration(cmtx0, R0, T0, cmtx1, R1, T1):
-    cam0 = camera.Camera(1, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 60)
-    cam1 = camera.Camera(0, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 60)
+    cam0 = camera.Camera(1, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cam1 = camera.Camera(0, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
 
     P0 = cmtx0 @ _make_homogeneous_rep_matrix(R0, T0)[:3,:]
     P1 = cmtx1 @ _make_homogeneous_rep_matrix(R1, T1)[:3,:]
@@ -398,14 +398,62 @@ def del_f():
     if os.path.exists('frames'):
         shutil.rmtree('frames')
     # delete frames_pairs folder if it exists
-    if os.path.exists('frames_pairs'):
-        shutil.rmtree('frames_pairs')
+    if os.path.exists('frames_pair'):
+        shutil.rmtree('frames_pair')
 
+def calibrate_origin(cmtx, dist):
+    from cv2 import aruco
+
+    cam0 = camera.Camera(1, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    
+    dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
+    parameters = aruco.DetectorParameters()
+    detector = aruco.ArucoDetector(dictionary, parameters)
+    res = (640, 480) if calibration_settings["resolution"] == 1 else (320, 240)
+    optimal_cmtx, roi0 = cv.getOptimalNewCameraMatrix(cmtx, dist, res, 1, res)
+
+    while True:
+        frame = cam0.get_frame()
+        frame = cv.undistort(frame, cmtx, dist, None, optimal_cmtx)
+        frame = cv.cvtColor(frame, cv.COLOR_RGBA2GRAY)
+        corners, ids, rejectedImgPoints = detector.detectMarkers(frame)
+        frame = cv.cvtColor(frame, cv.COLOR_GRAY2BGR)
+        aruco.drawDetectedMarkers(frame, corners, ids)
+        if len(corners) > 0:
+            cv.putText(frame, "Press enter if good", (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (255,255,255), 1)
+            ret, rvec, tvec = cv.solvePnP(np.array([[0, 0, 0], [18, 0, 0], [18, 0, 18], [0, 0, 18]], dtype=np.float32), corners[0][0], cmtx, dist)
+            imgpts, jac = cv.projectPoints(np.array([[0, 0, 0], [18, 0, 0], [0, 18, 0], [0, 0, 18]], dtype=np.float32), rvec, tvec, cmtx, dist)
+
+            imgpts = np.int32(imgpts).squeeze()
+            frame = cv.line(frame, imgpts[0], imgpts[1], (255,0,0), 3)
+            frame = cv.line(frame, imgpts[0], imgpts[2], (0,255,0), 3)
+            frame = cv.line(frame, imgpts[0], imgpts[3], (0,0,255), 3)
+
+            cv.imshow('img', frame)
+            if cv.waitKey(0) == 13:                
+                R, _  = cv.Rodrigues(rvec) #rvec is Rotation matrix in Rodrigues vector form
+                break
+
+    return R, tvec
+
+import sys
 if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'origin':
+            import utils.vision as vision
+            cmtx, dist = vision.read_camera_parameters("0")
+            oldr0, oldt0 = vision.read_rotation_translation("0")
+            r1, t1 = vision.read_rotation_translation("1")
+
+            r1 = r1 @ np.linalg.inv(oldr0)
+            t1 = t1 - r1 @ oldt0
+
+            R, tvec = calibrate_origin(cmtx, dist)
+            save_extrinsic_calibration_parameters(R, tvec, r1 @ R, t1 + r1 @ tvec)
+            print("Successfully set origin!")
+            exit(0)
+
     del_f()
-    # delete camera_parameters folder if it exists
-    if os.path.exists('camera_parameters'):
-        shutil.rmtree('camera_parameters')
 
     """Step1. Save calibration frames for single cameras"""
     save_frames_single_camera("1") #save frames for camera0
@@ -441,6 +489,6 @@ if __name__ == '__main__':
 
     save_extrinsic_calibration_parameters(R0, T0, R, T) #this will write R and T to disk
 
-    check_calibration(cmtx0, R0, T0, cmtx1, R, T)
-
     del_f()
+
+    check_calibration(cmtx0, R0, T0, cmtx1, R, T)

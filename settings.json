@@ -50,5 +50,5 @@
     "pose_lm_min_score": 0.25, // The mininum confidence score for the pose landmark model for a person being in the image.
     "refine_kernel_size": 7, // The size of the kernel used to refine the keypoints (from the heatmap).
     "refine_min_score": 0.5, // The minimum confidence for the heatmap to be used for refining the keypoints.
-    "draw_pose": true // Wether to draw a 3d skeleton visualization.
+    "draw_pose": false // Wether to draw a 3d skeleton visualization.
 }

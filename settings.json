@@ -6,6 +6,7 @@
     "resolution": 1,  // 0 = 320x240, 1 = 640x480
     "color": 1,  // 0 = grayscale, 1 = color
     "fps": 50, // Sets the framerate of the camera.
+    "model": 2, // Sets the landmark model. 0 = lite, 1 = full, 2 = heavy
     
 
     /* FILTERING OPTIONS

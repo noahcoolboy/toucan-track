@@ -17,8 +17,9 @@ import camera.binding as camera
 settings = pyjson5.decode_io(open("settings.json", "r"))
 client = client.OSCClient(settings["ip"], settings.get("port", 9000))
 
+model = ["lite", "full", "heavy"][settings.get("model", 1)]
 det_sess = onnxruntime.InferenceSession("models/pose_detection.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
-landmark_sess = onnxruntime.InferenceSession("models/pose_landmark_full_batched.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+landmark_sess = onnxruntime.InferenceSession(f"models/pose_landmark_{model}_batched.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 
 running = True
 

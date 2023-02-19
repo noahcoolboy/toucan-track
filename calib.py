@@ -15,7 +15,8 @@ calibration_settings = {
     "checkerboard_box_size_scale" : 4, # 4cm
     "checkerboard_columns": 11,
     "checkerboard_rows": 8, 
-    "cooldown": 25
+    "cooldown": 25,
+    "aruco_size": 18, # 18cm
 }
 
 #Open camera stream and save frames
@@ -421,13 +422,14 @@ def calibrate_origin(cmtx, dist):
         aruco.drawDetectedMarkers(frame, corners, ids)
         if len(corners) > 0:
             cv.putText(frame, "Press enter if good", (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (255,255,255), 1)
-            ret, rvec, tvec = cv.solvePnP(np.array([[0, 0, 0], [18, 0, 0], [18, 0, 18], [0, 0, 18]], dtype=np.float32), corners[0][0], cmtx, dist)
-            imgpts, jac = cv.projectPoints(np.array([[0, 0, 0], [18, 0, 0], [0, 18, 0], [0, 0, 18]], dtype=np.float32), rvec, tvec, cmtx, dist)
+            s = calibration_settings['aruco_size']
+            ret, rvec, tvec = cv.solvePnP(np.array([[0, 0, 0], [s, 0, 0], [s, 0, s], [0, 0, s]], dtype=np.float32), corners[0][0], cmtx, dist)
+            imgpts, jac = cv.projectPoints(np.array([[0, 0, 0], [s, 0, 0], [0, s, 0], [0, 0, s]], dtype=np.float32), rvec, tvec, cmtx, dist)
 
             imgpts = np.int32(imgpts).squeeze()
-            frame = cv.line(frame, imgpts[0], imgpts[1], (255,0,0), 3)
+            frame = cv.line(frame, imgpts[0], imgpts[1], (0,0,255), 3)
             frame = cv.line(frame, imgpts[0], imgpts[2], (0,255,0), 3)
-            frame = cv.line(frame, imgpts[0], imgpts[3], (0,0,255), 3)
+            frame = cv.line(frame, imgpts[0], imgpts[3], (255,0,0), 3)
 
             cv.imshow('img', frame)
             if cv.waitKey(0) == 13:                

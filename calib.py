@@ -17,6 +17,7 @@ calibration_settings = {
     "checkerboard_rows": 8, 
     "cooldown": 25,
     "aruco_size": 18, # 18cm
+    "aruco_calibration_frames": 200
 }
 
 #Open camera stream and save frames
@@ -422,7 +423,10 @@ def calibrate_origin(cmtx, dist):
         aruco.drawDetectedMarkers(frame, corners, ids)
         if len(corners) > 0:
             cv.putText(frame, "Press enter if good", (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (255,255,255), 1)
+            id = ids[0][0]
             s = calibration_settings['aruco_size']
+            t = calibration_settings['aruco_calibration_frames']
+            
             ret, rvec, tvec = cv.solvePnP(np.array([[0, 0, 0], [s, 0, 0], [s, 0, s], [0, 0, s]], dtype=np.float32), corners[0][0], cmtx, dist)
             imgpts, jac = cv.projectPoints(np.array([[0, 0, 0], [s, 0, 0], [0, s, 0], [0, 0, s]], dtype=np.float32), rvec, tvec, cmtx, dist)
 
@@ -432,7 +436,35 @@ def calibrate_origin(cmtx, dist):
             frame = cv.line(frame, imgpts[0], imgpts[3], (255,0,0), 3)
 
             cv.imshow('img', frame)
-            if cv.waitKey(0) == 13:                
+
+            if cv.waitKey(0) == 13:
+                rvecs = []
+                tvecs = []
+                i = 0
+                while True:
+                    frame = cam0.get_frame()
+                    frame = cv.undistort(frame, cmtx, dist, None, optimal_cmtx)
+                    frame = cv.cvtColor(frame, cv.COLOR_RGBA2GRAY)
+                    corners, ids, rejectedImgPoints = detector.detectMarkers(frame)
+                    frame = cv.cvtColor(frame, cv.COLOR_GRAY2BGR)
+                    aruco.drawDetectedMarkers(frame, corners, ids)
+                    if len(corners) > 0:
+                        if id == ids[0][0]:
+                            ret, rvec, tvec = cv.solvePnP(np.array([[0, 0, 0], [s, 0, 0], [s, 0, s], [0, 0, s]], dtype=np.float32), corners[0][0], cmtx, dist)
+                            rvecs.append(rvec)
+                            tvecs.append(tvec)
+                            i += 1
+
+                    cv.putText(frame, f"Frame {i+1}/{t}", (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (255,255,255), 1)
+                    cv.imshow('img', frame)
+                    cv.waitKey(1)
+
+                    if i == t:
+                        break
+
+                rvec = np.mean(rvecs, axis=0)
+                tvec = np.mean(tvecs, axis=0)
+
                 R, _  = cv.Rodrigues(rvec) #rvec is Rotation matrix in Rodrigues vector form
                 break
 

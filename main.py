@@ -229,7 +229,9 @@ def triangulation_thread():
         points = points.squeeze() / 100 # (39, 3)
         #points = -points
         # swap x and z
-        points[:, [0, 2]] = points[:, [2, 0]]
+        #points[:, [0, 2]] = points[:, [2, 0]]
+        # invert x
+        points[:, 0] = -points[:, 0]
         t = time.time() * 1000
         for i in range(39):
             points[i] = smoothing[i].filter(points[i], t)

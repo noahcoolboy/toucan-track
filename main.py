@@ -42,8 +42,9 @@ for i in range(cam_count):
 oncm = []
 for i in range(cam_count):
     cmtx, dist = vision.read_camera_parameters(i)
+    rvec, tvec = vision.read_rotation_translation(i)
     optimal_cmtx, roi0 = cv2.getOptimalNewCameraMatrix(cmtx, dist, res, 1, res)
-    oncm.append((cmtx, dist, optimal_cmtx))
+    oncm.append((cmtx, dist, optimal_cmtx, rvec, tvec))
 #endregion
 
 #region Multithreading Setup
@@ -196,8 +197,9 @@ def pose_landmark_post_thread():
             values.append((imgs[i], landmarks[i], flags[i]))
 
             if settings.get("debug", False) and roi:
-                draw.display_result(imgs[i], landmarks[i], flags[i], roi[i])
-                cv2.imshow("Pose{}".format(i), imgs[i])
+                frame = imgs[i]
+                draw.display_result(frame, landmarks[i], flags[i], roi[i])
+                cv2.imshow("Pose{}".format(i), frame)
         
         pose_landmark_post_queue.put(values, block=True)
 
@@ -228,11 +230,17 @@ def triangulation_thread():
         # Calculate and smooth 3D points
         points = vision.get_depth(proj0, proj1, values[0][1][:, 0:2].transpose(), values[1][1][:, 0:2].transpose()) 
         points = points.squeeze() / 100 # (39, 3)
-        #points = -points
-        # swap x and z
-        #points[:, [0, 2]] = points[:, [2, 0]]
-        # invert x
-        points[:, 0] = -points[:, 0]
+        
+        points = points * settings.get("scale_multiplier", 1)
+        if settings.get("flip_x", False):
+            points[:, 0] = -points[:, 0]
+        if settings.get("flip_y", False):
+            points[:, 1] = -points[:, 1]
+        if settings.get("flip_z", False):
+            points[:, 2] = -points[:, 2]
+        if settings.get("swap_xz", False):
+            points[:, [0, 2]] = points[:, [2, 0]]
+        
         t = time.time() * 1000
         for i in range(39):
             points[i] = smoothing[i].filter(points[i], t)

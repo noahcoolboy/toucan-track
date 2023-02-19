@@ -33,8 +33,10 @@
 
     // The filter applied to the 2d keypoints detected by the model.
     "2d_filter": {
-        "type": "MovingAverage",
-        "window_size": 5
+        "type": "OneEuro",
+        "mincutoff": 1,
+        "beta": 0.00700,
+        "dcutoff": 1.0
     },
 
     // The filter applied to the triangulated 3d keypoints.
@@ -51,5 +53,10 @@
     "pose_lm_min_score": 0.35, // The mininum confidence score for the pose landmark model for a person being in the image.
     "refine_kernel_size": 7, // The size of the kernel used to refine the keypoints (from the heatmap).
     "refine_min_score": 0.5, // The minimum confidence for the heatmap to be used for refining the keypoints.
-    "draw_pose": false // Wether to draw a 3d skeleton visualization.
+    "draw_pose": false, // Wether to draw a 3d skeleton visualization.
+    "scale_multiplier": 1.0, // Set to 4 when having calibrated for 480p but using 240p.
+    "flip_x": true,
+    "flip_y": false,
+    "flip_z": false,
+    "swap_xz": false
 }

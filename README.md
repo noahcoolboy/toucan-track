@@ -21,13 +21,13 @@ If you're using a different checkboard size, open up `calib.py` in your favorite
 > **Note**: Because of how OpenCV works, `checkerboard_columns` and `checkerboard_rows` do not count the amount of squares, but the amount of corners. This means that the value should be one less than the number of squares in each direction. For the example pattern listed above, this would be 11 columns and 8 rows.
 
 Once you're done modifying `calib.py`, you can run it using `python calib.py`.
-A window will appear showing one of your connected PS3 cameras. Place the calibration pattern as close as possible (while still being fully visible) to the camera, and press space to start the collection of frames. A good calibration image should look like the following:
-![Example Calibration Image](https://user-images.githubusercontent.com/46800081/219941473-32608127-87e7-4a2d-accd-9b0df8b03f18.png | width=200)
+A window will appear showing one of your connected PS3 cameras. Place the calibration pattern as close as possible (while still being fully visible) to the camera, and press space to start the collection of frames. A good calibration image should look like the following:  
+<img src="https://user-images.githubusercontent.com/46800081/219941473-32608127-87e7-4a2d-accd-9b0df8b03f18.png" width=300>
 
 Once the frames have been collected, repeat this process with the other camera. After that, the camera distortion will be calculate for both cameras, this may take a minute. When it's done, both cameras will be shown. This part is where camera extrinsics will be calibrated. Make sure both cameras can see the calibration pattern, and press space to start the collection of frames. While the frames are being collected, move the pattern around but keep it in frame for both cameras. After having collected all the frames, the camera extrinsics will be calculated. Once done, both cameras will pop up again, and you can verify the calibration results. By placing the calibration pattern infront of both cameras again, the estimated depth will be displayed in centimeters.
 
 For improving accuracy, you can set the world origin. Print out an aruco marker (Eg. [ID 0 (18x18cm)](https://user-images.githubusercontent.com/46800081/219941888-1968b0d6-c23a-4d25-bc70-681931375418.svg)) and place it in the middle of the room. Run `python calib.py origin`. This show the detected aruco marker from your camera feed. Make sure the Z (blue) axis is pointing towards the main direction of your playspace (the way which you face most of the time while playing). An example of this calibration:
-![Example Origin Calibration Image](https://user-images.githubusercontent.com/46800081/219942391-6116799e-8950-4b54-b41a-56b6a0e39e0d.png | width=200)
+<img src="https://user-images.githubusercontent.com/46800081/219943106-4e0e4fa8-2074-4eb8-b619-1a87fc24f83a.png" width=300>  
 Press enter if the world origin looks good and well aligned, otherwise press any other key. The console will say `Successfully set origin!` if all went well.
 
 ### Usage

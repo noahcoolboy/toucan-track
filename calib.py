@@ -4,6 +4,7 @@ import cv2 as cv
 import glob
 import numpy as np
 import os
+import time
 
 import camera.binding as camera
 
@@ -172,17 +173,23 @@ def save_frames_two_cams(camera0_name, camera1_name):
     #settings for taking data
     cooldown_time = calibration_settings['cooldown']    
     number_to_save = calibration_settings['stereo_calibration_frames']
+    rows = calibration_settings['checkerboard_columns']
+    columns = calibration_settings['checkerboard_rows']
 
     #open the video streams
-    cap0 = camera.Camera(camera0_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
     cap1 = camera.Camera(camera1_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    time.sleep(0.5)
+    cap0 = camera.Camera(camera0_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
 
     cooldown = cooldown_time
     start = False
     saved_count = 0
+    
     while True:
         frame0 = cap0.get_frame()
         frame1 = cap1.get_frame()
+        gray1 = cv.cvtColor(frame0, cv.COLOR_BGR2GRAY)
+        gray2 = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
 
         frame0_small = frame0.copy()
         frame1_small = frame1.copy()
@@ -199,8 +206,15 @@ def save_frames_two_cams(camera0_name, camera1_name):
             cv.putText(frame1_small, "Cooldown: " + str(cooldown), (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
             cv.putText(frame1_small, "Num frames: " + str(saved_count), (50,100), cv.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 1)
 
+            c_ret1, corners1 = cv.findChessboardCorners(gray1, (rows, columns), None)
+            c_ret2, corners2 = cv.findChessboardCorners(gray2, (rows, columns), None)
+            
+            if c_ret1 and c_ret2:
+                cv.drawChessboardCorners(frame0_small, (rows,columns), corners1, c_ret1)
+                cv.drawChessboardCorners(frame1_small, (rows,columns), corners2, c_ret2)
+
             #save the frame when cooldown reaches 0.
-            if cooldown <= 0:
+            if cooldown <= 0 and c_ret1 and c_ret2:
                 savename = os.path.join('frames_pair', camera0_name + '_' + str(saved_count) + '.png')
                 cv.imwrite(savename, frame0)
 
@@ -357,8 +371,9 @@ def get_depth(proj0, proj1, points0, points1):
     return point3d
 
 def check_calibration(cmtx0, R0, T0, cmtx1, R1, T1):
-    cam0 = camera.Camera(1, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
-    cam1 = camera.Camera(0, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cam1 = camera.Camera(1, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    time.sleep(0.5)
+    cam0 = camera.Camera(0, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
 
     P0 = cmtx0 @ _make_homogeneous_rep_matrix(R0, T0)[:3,:]
     P1 = cmtx1 @ _make_homogeneous_rep_matrix(R1, T1)[:3,:]
@@ -406,7 +421,7 @@ def del_f():
 def calibrate_origin(cmtx, dist):
     from cv2 import aruco
 
-    cam0 = camera.Camera(1, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cam0 = camera.Camera(0, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
     
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
     parameters = aruco.DetectorParameters()
@@ -473,8 +488,8 @@ def calibrate_origin(cmtx, dist):
 import sys
 if __name__ == '__main__':
     if len(sys.argv) > 1:
+        import utils.vision as vision
         if sys.argv[1] == 'origin':
-            import utils.vision as vision
             cmtx, dist = vision.read_camera_parameters("0")
             oldr0, oldt0 = vision.read_rotation_translation("0")
             r1, t1 = vision.read_rotation_translation("1")
@@ -486,33 +501,40 @@ if __name__ == '__main__':
             save_extrinsic_calibration_parameters(R, tvec, r1 @ R, t1 + r1 @ tvec)
             print("Successfully set origin!")
             exit(0)
+        elif sys.argv[1] == 'test':
+            cmtx0, dist0 = vision.read_camera_parameters("0")
+            R0, T0 = vision.read_rotation_translation("0")
+            cmtx1, dist1 = vision.read_camera_parameters("1")
+            R, T = vision.read_rotation_translation("1")
+            check_calibration(cmtx0, R0, T0, cmtx1, R, T)
+            exit(0)
 
     del_f()
 
     """Step1. Save calibration frames for single cameras"""
-    save_frames_single_camera("1") #save frames for camera0
-    save_frames_single_camera("0") #save frames for camera1
+    save_frames_single_camera("0") #save frames for camera0
+    save_frames_single_camera("1") #save frames for camera1
 
 
     """Step2. Obtain camera intrinsic matrices and save them"""
     #camera0 intrinsics
-    images_prefix = os.path.join('frames', '1*')
+    images_prefix = os.path.join('frames', '0*')
     cmtx0, dist0 = calibrate_camera_for_intrinsic_parameters(images_prefix) 
-    save_camera_intrinsics(cmtx0, dist0, '1') #this will write cmtx and dist to disk
+    save_camera_intrinsics(cmtx0, dist0, '0') #this will write cmtx and dist to disk
 
     #camera1 intrinsics
-    images_prefix = os.path.join('frames', '0*')
+    images_prefix = os.path.join('frames', '1*')
     cmtx1, dist1 = calibrate_camera_for_intrinsic_parameters(images_prefix)
-    save_camera_intrinsics(cmtx1, dist1, '0') #this will write cmtx and dist to disk
+    save_camera_intrinsics(cmtx1, dist1, '1') #this will write cmtx and dist to disk
 
 
     """Step3. Save calibration frames for both cameras simultaneously"""
-    save_frames_two_cams('1', '0') #save simultaneous frames
+    save_frames_two_cams('0', '1') #save simultaneous frames
 
 
     """Step4. Use paired calibration pattern frames to obtain camera0 to camera1 rotation and translation"""
-    frames_prefix_c0 = os.path.join('frames_pair', '1*')
-    frames_prefix_c1 = os.path.join('frames_pair', '0*')
+    frames_prefix_c0 = os.path.join('frames_pair', '0*')
+    frames_prefix_c1 = os.path.join('frames_pair', '1*')
     R, T = stereo_calibrate(cmtx0, dist0, cmtx1, dist1, frames_prefix_c0, frames_prefix_c1)
 
 

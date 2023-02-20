@@ -38,6 +38,7 @@ for i in range(cam_count):
         settings.get("resolution", 1),
         fps, debug=True
     ))
+cameras.reverse()
 
 oncm = []
 for i in range(cam_count):

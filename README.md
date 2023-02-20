@@ -1,6 +1,7 @@
 # ToucanTrack
 ToucanTrack is an app which achieves Full Body Tracking for VRChat using 2 PS3 Eye Cameras and AI.
-> **Note**: ToucanTrack is still in beta! Expect instability and issues.
+> **Note**: ToucanTrack is still in beta! Expect instability and issues.  
+
 Demo: https://streamable.com/c7zstj
 
 ### Installation

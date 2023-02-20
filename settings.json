@@ -54,7 +54,12 @@
     "refine_kernel_size": 7, // The size of the kernel used to refine the keypoints (from the heatmap).
     "refine_min_score": 0.5, // The minimum confidence for the heatmap to be used for refining the keypoints.
     "draw_pose": false, // Wether to draw a 3d skeleton visualization.
-    "scale_multiplier": 1.0, // Set to 4 when having calibrated for 480p but using 240p.
+    // Note: The scale multiplier can be found by modifying using the "Real User Height" setting.
+    //       First, adjust the height for your feet to touch the ground (while standing upright).
+    //       Next, start the FBT calibration mode, and adjust the "Real User Height" setting until
+    //       the 3d points align with your in game avatar.
+    //       Finally, divide the first height by the second height, and set the result as the scale multiplier.
+    "scale_multiplier": 0.875, // Modify if the 3d points don't align properly with your in game avatar.
     "flip_x": true,
     "flip_y": false,
     "flip_z": false,

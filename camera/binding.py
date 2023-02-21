@@ -46,32 +46,90 @@ class CLEyeCameraParameter(int):
     CLEYE_LENSBRIGHTNESS = 19 # [-500, 500]
 
 cdir = os.path.dirname(__file__)
+process = None
+server = None
+ports = []
 
-port = 6004
+
+def start_camera_server(debug):
+    global process, server
+    if server:
+        return server
+    
+    port = 6004
+    process = subprocess.Popen(
+        [os.path.join(cdir, "python3.8", "python.exe"), os.path.join(cdir, "camera.py"), str(port)],
+        creationflags=subprocess.CREATE_NEW_CONSOLE if debug else 0,
+        start_new_session=True,
+        env=dict(os.environ, PYDEVD_DISABLE_FILE_VALIDATION="1")
+    )
+    server = multiprocessing.connection.Client(('localhost', port))
+    port += 1
+    return server
+
+
+def stop_camera_server():
+    global process, server, ports
+    if server:
+        server.send(("exit",))
+        server.recv()
+        server.close()
+        server = None
+    
+    if process and process.poll() is None:
+        process.terminate()
+        process.wait()
+        process = None
+
+    ports = []
+
+
+def get_first_available_port():
+    global ports
+    port = 6005
+    while True:
+        if port not in ports:
+            ports.append(port)
+            return port
+        port += 1
+
+
+def get_camera_count(debug=True):
+    server = start_camera_server(debug)
+    server.send(("cam_count",))
+    return server.recv()
+
 
 class Camera:
-    def __init__(self, camera_id, color_mode, resolution, frame_rate, debug=False):
-        global port
-        port += 1
-        self.process = subprocess.Popen([os.path.join(cdir, "python3.7", "python.exe"), os.path.join(cdir, "camera.py"), str(port)], creationflags=subprocess.CREATE_NEW_CONSOLE if debug else 0, start_new_session=True)
-        self.client = multiprocessing.connection.Client(('localhost', port))
+    def __init__(self, camera_id, color_mode, resolution, frame_rate, debug=True):
+        self.port = get_first_available_port()
 
-        self.client.send(("init", int(camera_id), color_mode, resolution, frame_rate))
-        succ, self.width, self.height, self.color_mode_d = self.client.recv()
+        server = start_camera_server(debug)
+        server.send(("init", self.port, int(camera_id), color_mode, resolution, frame_rate))
+        succ, err = server.recv()
         
         if not succ:
-            raise Exception("Could not start camera:" + str(self.width))
+            raise Exception("Could not start camera thread: " + str(err))
+
+        self.client = multiprocessing.connection.Client(('localhost', self.port))
+        succ, self.width, self.height, self.color_mode_d = self.client.recv()
+
+        if not succ:
+            raise Exception("Could not start camera: " + str(self.width))
 
         # Default settings
         self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_GAIN, True)
         self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_EXPOSURE, True)
         self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_WHITEBALANCE, True)
 
-        time.sleep(0.2)
-        
+        self.client.send(("get_framebuf",))
+        self.framebuf = self.client.recv()
+    
     def get_frame(self):
         self.client.send(("get_frame",))
-        return np.frombuffer(self.client.recv(), dtype=np.uint8).reshape((self.height, self.width, self.color_mode_d))
+        self.client.recv()
+        
+        return np.frombuffer(self.framebuf.buf, dtype=np.uint8).reshape((self.height, self.width, self.color_mode_d))
     
     def set_parameter(self, param, value):
         self.client.send(("set_parameter", param, value))
@@ -86,33 +144,35 @@ class Camera:
         return self.client.recv()
 
     def __del__(self):
-        self.client.send(("exit",))
-        self.client.recv()
-
+        try:
+            self.client.send(("exit",))
+            self.client.recv()
+        except:
+            pass
 
 
 if __name__ == "__main__":
-    fps = 187
-    camera = Camera(0, CLEyeCameraColorMode.CLEYE_MONO_PROCESSED, CLEyeCameraResolution.CLEYE_QVGA, fps)
+    fps = 50
+    cameras = []
+    for i in range(2):
+        cameras.append(Camera(i, CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, CLEyeCameraResolution.CLEYE_VGA, fps))
 
     start = time.time()
-    frames = 0
+    framesc = 0
 
-    while True or cv2.waitKey(1) != 27:
-        frame = camera.get_frame()
+    while cv2.waitKey(1) != 27:
+        frames = [camera.get_frame() for camera in cameras]
 
-        if frames == 100:
+        if framesc == 100:
             print(100 / (time.time() - start))
-            frames = 0
+            framesc = 0
             start = time.time()
 
-        frames += 1
+        framesc += 1
 
-        #if results.pose_landmarks:
-        #    draw.draw_landmarks(frame, results.pose_landmarks, mp.solutions.POSE_CONNECTIONS)
-
-        #cv2.imshow("frame", frame)
-    
-    del camera
+        for i, frame in enumerate(frames):
+            cv2.imshow("frame" + str(i), frame)
+        
+    stop_camera_server()
 
     cv2.destroyAllWindows()

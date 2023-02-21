@@ -1,6 +1,10 @@
+import multiprocessing
+import multiprocessing.connection
+import multiprocessing.shared_memory
 import ctypes
 import sys
-dll = ctypes.cdll.LoadLibrary("CLEyeMulticam.dll")
+import os
+dll = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(__file__), "CLEyeMulticam.dll"))
 
 class GUID(ctypes.Structure):
     _fields_ = [("Data1", ctypes.c_ulong),
@@ -109,10 +113,10 @@ def color_mode_d(mode):
     return 1
 
 class Camera(object):
-    def __init__(self, camera_id, color_mode, resolution, frame_rate):
-        self.guid = dll.CLEyeGetCameraUUID(camera_id)
+    def __init__(self, guid, color_mode, resolution, frame_rate):
+        self.guid = guid
         self.cam = dll.CLEyeCreateCamera(self.guid, color_mode, resolution, frame_rate)
-        
+
         if(not dll.CLEyeCameraStart(self.cam)):
             raise Exception("Could not start camera")
 
@@ -124,15 +128,18 @@ class Camera(object):
         self.width = self.width.value
         self.height = self.height.value
         
-        self.framebuf = (ctypes.c_ubyte * (self.width * self.height * self.color_mode_d))()
+        # I'm surprised this works
+        self.framebufmem = multiprocessing.shared_memory.SharedMemory(create=True, size=self.width * self.height * self.color_mode_d)
+        self.framebuf = (ctypes.c_ubyte * (self.width * self.height * self.color_mode_d)).from_buffer(self.framebufmem.buf)
 
     def __del__(self):
+        print("Camera stopped: %s" % (self.guid))
         dll.CLEyeCameraStop(self.cam)
         dll.CLEyeDestroyCamera(self.cam)
 
     def get_frame(self):
         dll.CLEyeCameraGetFrame(self.cam, self.framebuf, 1000)
-        return self.framebuf
+        return True
 
     def set_parameter(self, param, value):
         return dll.CLEyeSetCameraParameter(self.cam, param, value)
@@ -144,18 +151,91 @@ class Camera(object):
         return dll.CLEyeCameraLED(self.cam, value)
 
 
-if __name__ == '__main__':
-    import multiprocessing.connection
-
-    listener = multiprocessing.connection.Listener(("localhost", int(sys.argv[1])))
-    conn = listener.accept()
-
-    print("Camera server started!")
+conns = {}
+guids = {}
+def camera_thread(msg, guids):
+    port = msg[1]
+    try:
+        listener = multiprocessing.connection.Listener(("localhost", port))
+        conn = listener.accept()
+        
+        if not guids.get(int(msg[2]), None):
+            return conn.send((False, "Camera %d not found. Make sure to restart the camera server when plugging in a new camera." % msg[2], None, None))
+        
+        try:
+            cam = Camera(guids[int(msg[2])], msg[3], msg[4], msg[5])
+            print("Camera initialized: %s (%d x %d @ %ffps)" % (cam.guid, cam.width, cam.height, msg[5]))
+        except Exception as e:
+            return conn.send((False, "Could not initialize camera: %s" % str(e), None, None))
+        
+        conn.send((True, cam.width, cam.height, cam.color_mode_d))
+        conns[port] = conn
+        
+    except Exception as e:
+        raise Exception("Could not initialize camera: %s" % str(e))
 
     while True:
-        msg = conn.recv()
+        try:
+            msg = conn.recv()
+        except EOFError:
+            msg = ["exit"]
+        except ConnectionAbortedError:
+            msg = ["exit"]
+        
         if msg[0] == "exit":
             del cam
+            if conn.poll():
+                conn.send("OK")
+                conn.close()
+            listener.close()
+            conns[port] = None
+            break
+        elif msg[0] == "get_frame":
+            conn.send(cam.get_frame())
+        elif msg[0] == "set_parameter":
+            conn.send(cam.set_parameter(msg[1], msg[2]))
+        elif msg[0] == "get_parameter":
+            conn.send(cam.get_parameter(msg[1]))
+        elif msg[0] == "set_led":
+            conn.send(cam.set_led(msg[1]))
+        elif msg[0] == "get_framebuf":
+            conn.send(cam.framebufmem)
+        else:
+            conn.send("Unknown command")
+
+
+if __name__ == '__main__':
+    print("Camera server started!")
+    listener = multiprocessing.connection.Listener(("localhost", int(sys.argv[1])))
+
+    # Because of how CLEyeMulticam is, we need to fetch all Camera GUIDs before we use them
+    # Whenever a camera gets used, it somehow magically dissapears from the list of cameras
+    # Say we have 2 cameras hooked up. The first one with id 0, the second one with id 1.
+    # If we start using the first camera (id 0), the camera at id 1 will become id 0.
+    # This means that we can't use the camera at id 1 anymore, because it's now at id 0.
+    # The only solution to this is to load the cameras in reverse order (1 first, then 0).
+    # So instead, we fetch all GUIDs first, and keep their ID. The disadvantage to this
+    # is that newly hooked up cameras won't be detected until the server is restarted.
+    print("Detected cameras:")
+    for i in range(dll.CLEyeGetCameraCount()):
+        guids[i] = dll.CLEyeGetCameraUUID(i)
+        print("  %d: %s" % (i, guids[i]))
+
+    conn = listener.accept()
+
+    while True:
+        try:
+            msg = conn.recv()
+        except EOFError:
+            msg = ["exit"]
+        except ConnectionAbortedError:
+            msg = ["exit"]
+        if msg[0] == "exit":
+            print("Exiting camera server...")
+            # Gracefully exit all threads
+            for c in conns.values():
+                c.close()
+            
             conn.send("OK")
             conn.close()
             listener.close()
@@ -164,19 +244,10 @@ if __name__ == '__main__':
             conn.send(dll.CLEyeGetCameraCount())
         elif msg[0] == "init":
             try:
-                cam = Camera(msg[1], msg[2], msg[3], msg[4])
-                print("Camera initialized: %s (%d x %d @ %ffps)" % (cam.guid, cam.width, cam.height, msg[4]))
-                conn.send((True, cam.width, cam.height, cam.color_mode_d))
+                p = multiprocessing.Process(target=camera_thread, args=(msg, guids))
+                p.start()
+                conn.send((True, ""))
             except Exception as e:
-                conn.send((False, str(e), None, None))
-
-        elif msg[0] == "get_frame":
-            conn.send(bytes(cam.get_frame()))
-        elif msg[0] == "set_parameter":
-            conn.send(cam.set_parameter(msg[1], msg[2]))
-        elif msg[0] == "get_parameter":
-            conn.send(cam.get_parameter(msg[1]))
-        elif msg[0] == "set_led":
-            conn.send(cam.set_led(msg[1]))
+                conn.send((False, str(e)))
         else:
             print("Unknown message: %s" % msg)

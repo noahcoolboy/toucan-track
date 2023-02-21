@@ -159,7 +159,7 @@ def camera_thread(msg, guids):
         except Exception as e:
             return conn.send((False, "Could not initialize camera: %s" % str(e), None, None))
         
-        conn.send((True, cam.width, cam.height, cam.color_mode_d, cam.guid))
+        conn.send((True, cam.width, cam.height, cam.color_mode_d, str(cam.guid)))
         conns[port] = conn
         
     except Exception as e:

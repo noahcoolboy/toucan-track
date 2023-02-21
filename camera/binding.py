@@ -11,24 +11,6 @@ import multiprocessing.connection
 import multiprocessing.shared_memory
 import cv2
 
-class GUID(ctypes.Structure):
-    _fields_ = [("Data1", ctypes.c_ubyte * 4),
-                ("Data2", ctypes.c_ubyte * 2),
-                ("Data3", ctypes.c_ubyte * 2),
-                ("Data4", ctypes.c_ubyte * 8)]
-    
-    def __init__(self, guid):
-        self.Data1 = (ctypes.c_ubyte * 4)(*[int(guid[1 + i * 2:3 + i * 2], 16) for i in range(4)])
-        self.Data2 = (ctypes.c_ubyte * 2)(*[int(guid[10 + i * 2:12 + i * 2], 16) for i in range(2)])
-        self.Data3 = (ctypes.c_ubyte * 2)(*[int(guid[15 + i * 2:17 + i * 2], 16) for i in range(2)])
-        self.Data4 = (ctypes.c_ubyte * 8)(*[int(guid[20 + i * 2:22 + i * 2], 16) for i in range(8)])
-    
-    def __str__(self):
-        return "{%s-%s-%s-%s}" % ("".join(["%02X" % x for x in self.Data1]),
-                                  "".join(["%02X" % x for x in self.Data2]),
-                                  "".join(["%02X" % x for x in self.Data3]),
-                                  "".join(["%02X" % x for x in self.Data4]))
-
 class CLEyeCameraColorMode(int):
     CLEYE_MONO_PROCESSED = 0
     CLEYE_COLOR_PROCESSED = 1

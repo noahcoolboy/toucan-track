@@ -7,21 +7,6 @@ import os
 dll = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(__file__), "CLEyeMulticam.dll"))
 
 class GUID(ctypes.Structure):
-    _fields_ = [("Data1", ctypes.c_ulong),
-                ("Data2", ctypes.c_ushort),
-                ("Data3", ctypes.c_ushort),
-                ("Data4", ctypes.c_ubyte * 8)]
-    
-    def __init__(self, guid):
-        self.Data1 = int(guid[1:9], 16)
-        self.Data2 = int(guid[10:14], 16)
-        self.Data3 = int(guid[15:19], 16)
-        self.Data4 = (ctypes.c_ubyte * 8)(*[int(guid[20 + i * 2:22 + i * 2], 16) for i in range(8)])
-
-    def __str__(self):
-        return "{%08X-%04X-%04X-%s}" % (self.Data1, self.Data2, self.Data3, "".join(["%02X" % x for x in self.Data4]))
-
-class GUID2(ctypes.Structure):
     _fields_ = [("Data1", ctypes.c_ubyte * 4),
                 ("Data2", ctypes.c_ubyte * 2),
                 ("Data3", ctypes.c_ubyte * 2),
@@ -78,9 +63,9 @@ class CLEyeCameraParameter(ctypes.c_int):
 dll.CLEyeGetCameraCount.restype = ctypes.c_int
 
 dll.CLEyeGetCameraUUID.argtypes = [ctypes.c_int]
-dll.CLEyeGetCameraUUID.restype = GUID2
+dll.CLEyeGetCameraUUID.restype = GUID
 
-dll.CLEyeCreateCamera.argtypes = [GUID2, CLEyeCameraColorMode, CLEyeCameraResolution, ctypes.c_float]
+dll.CLEyeCreateCamera.argtypes = [GUID, CLEyeCameraColorMode, CLEyeCameraResolution, ctypes.c_float]
 dll.CLEyeCreateCamera.restype = ctypes.c_void_p
 
 dll.CLEyeDestroyCamera.argtypes = [ctypes.c_void_p]
@@ -129,11 +114,17 @@ class Camera(object):
         self.height = self.height.value
         
         # I'm surprised this works
-        self.framebufmem = multiprocessing.shared_memory.SharedMemory(create=True, size=self.width * self.height * self.color_mode_d)
+        self.framebufmem = multiprocessing.shared_memory.SharedMemory(create=True, size=self.width * self.height * self.color_mode_d, name="framebufmem" + str(self.guid))
         self.framebuf = (ctypes.c_ubyte * (self.width * self.height * self.color_mode_d)).from_buffer(self.framebufmem.buf)
 
     def __del__(self):
         print("Camera stopped: %s" % (self.guid))
+
+        # Deallocate the frame buffer
+        del self.framebuf
+        self.framebufmem.close()
+        self.framebufmem.unlink()
+
         dll.CLEyeCameraStop(self.cam)
         dll.CLEyeDestroyCamera(self.cam)
 
@@ -168,7 +159,7 @@ def camera_thread(msg, guids):
         except Exception as e:
             return conn.send((False, "Could not initialize camera: %s" % str(e), None, None))
         
-        conn.send((True, cam.width, cam.height, cam.color_mode_d))
+        conn.send((True, cam.width, cam.height, cam.color_mode_d, cam.guid))
         conns[port] = conn
         
     except Exception as e:
@@ -198,8 +189,6 @@ def camera_thread(msg, guids):
             conn.send(cam.get_parameter(msg[1]))
         elif msg[0] == "set_led":
             conn.send(cam.set_led(msg[1]))
-        elif msg[0] == "get_framebuf":
-            conn.send(cam.framebufmem)
         else:
             conn.send("Unknown command")
 

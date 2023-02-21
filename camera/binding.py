@@ -2,12 +2,32 @@
 # Since CLEyeMulticam.dll is a 32-bit DLL, we need to run a 32-bit Python interpreter.
 # Processes communicate with each other using multiprocessing.connection.
 
+import ctypes
 import subprocess
 import time
 import numpy as np
 import os
 import multiprocessing.connection
+import multiprocessing.shared_memory
 import cv2
+
+class GUID(ctypes.Structure):
+    _fields_ = [("Data1", ctypes.c_ubyte * 4),
+                ("Data2", ctypes.c_ubyte * 2),
+                ("Data3", ctypes.c_ubyte * 2),
+                ("Data4", ctypes.c_ubyte * 8)]
+    
+    def __init__(self, guid):
+        self.Data1 = (ctypes.c_ubyte * 4)(*[int(guid[1 + i * 2:3 + i * 2], 16) for i in range(4)])
+        self.Data2 = (ctypes.c_ubyte * 2)(*[int(guid[10 + i * 2:12 + i * 2], 16) for i in range(2)])
+        self.Data3 = (ctypes.c_ubyte * 2)(*[int(guid[15 + i * 2:17 + i * 2], 16) for i in range(2)])
+        self.Data4 = (ctypes.c_ubyte * 8)(*[int(guid[20 + i * 2:22 + i * 2], 16) for i in range(8)])
+    
+    def __str__(self):
+        return "{%s-%s-%s-%s}" % ("".join(["%02X" % x for x in self.Data1]),
+                                  "".join(["%02X" % x for x in self.Data2]),
+                                  "".join(["%02X" % x for x in self.Data3]),
+                                  "".join(["%02X" % x for x in self.Data4]))
 
 class CLEyeCameraColorMode(int):
     CLEYE_MONO_PROCESSED = 0
@@ -112,7 +132,7 @@ class Camera:
             raise Exception("Could not start camera thread: " + str(err))
 
         self.client = multiprocessing.connection.Client(('localhost', self.port))
-        succ, self.width, self.height, self.color_mode_d = self.client.recv()
+        succ, self.width, self.height, self.color_mode_d, self.guid = self.client.recv()
 
         if not succ:
             raise Exception("Could not start camera: " + str(self.width))
@@ -122,14 +142,13 @@ class Camera:
         self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_EXPOSURE, True)
         self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_WHITEBALANCE, True)
 
-        self.client.send(("get_framebuf",))
-        self.framebuf = self.client.recv()
+        self.framebuf = multiprocessing.shared_memory.SharedMemory(name="framebufmem" + str(self.guid))
     
     def get_frame(self):
         self.client.send(("get_frame",))
         self.client.recv()
         
-        return np.frombuffer(self.framebuf.buf, dtype=np.uint8).reshape((self.height, self.width, self.color_mode_d))
+        return np.frombuffer(bytes(self.framebuf.buf), dtype=np.uint8).reshape((self.height, self.width, self.color_mode_d))
     
     def set_parameter(self, param, value):
         self.client.send(("set_parameter", param, value))
@@ -145,6 +164,8 @@ class Camera:
 
     def __del__(self):
         try:
+            # Release shared memory
+            self.framebuf.close()
             self.client.send(("exit",))
             self.client.recv()
         except:

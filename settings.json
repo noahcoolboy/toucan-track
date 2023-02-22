@@ -59,7 +59,7 @@
     //       Next, start the FBT calibration mode, and adjust the "Real User Height" setting until
     //       the 3d points align with your in game avatar.
     //       Finally, divide the first height by the second height, and set the result as the scale multiplier.
-    "scale_multiplier": 0.875, // Modify if the 3d points don't align properly with your in game avatar.
+    "scale_multiplier": 1, // Modify if the 3d points don't align properly with your in game avatar.
     "flip_x": true,
     "flip_y": false,
     "flip_z": false,

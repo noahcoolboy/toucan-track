@@ -8,11 +8,11 @@ import cv2
 
 import utils.inference as inference
 import utils.filters as filters
+import utils.camera as camera
 import utils.vision as vision
 import utils.client as client
 import utils.pose as pose
 import utils.draw as draw
-import camera.binding as camera
 
 settings = pyjson5.decode_io(open("settings.json", "r"))
 client = client.OSCClient(settings["ip"], settings.get("port", 9000))
@@ -33,18 +33,13 @@ if(cam_count > 2):
 
 cameras = []
 for i in range(cam_count):
-    cameras.append(camera.Camera(cam_count - i - 1,
-        settings.get("color", 1) + camera.CLEyeCameraColorMode.CLEYE_MONO_RAW,
-        settings.get("resolution", 1),
-        fps, debug=True
-    ))
-cameras.reverse()
+    cameras.append(camera.get_camera(settings.get("camera" + str(i), "ps3:" + str(i))))
 
 oncm = []
 for i in range(cam_count):
     cmtx, dist = vision.read_camera_parameters(i)
     rvec, tvec = vision.read_rotation_translation(i)
-    optimal_cmtx, roi0 = cv2.getOptimalNewCameraMatrix(cmtx, dist, res, 1, res)
+    optimal_cmtx, roi0 = cv2.getOptimalNewCameraMatrix(cmtx, dist, cameras[i].resolution, 1, cameras[i].resolution)
     oncm.append((cmtx, dist, optimal_cmtx, rvec, tvec))
 #endregion
 

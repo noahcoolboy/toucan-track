@@ -151,13 +151,13 @@ def camera_thread(msg, guids):
         conn = listener.accept()
         
         if not guids.get(int(msg[2]), None):
-            return conn.send((False, "Camera %d not found. Make sure to restart the camera server when plugging in a new camera." % msg[2], None, None))
+            return conn.send((False, "Camera %d not found. Make sure to restart the camera server when plugging in a new camera." % msg[2], None, None, None))
         
         try:
             cam = Camera(guids[int(msg[2])], msg[3], msg[4], msg[5])
             print("Camera initialized: %s (%d x %d @ %ffps)" % (cam.guid, cam.width, cam.height, msg[5]))
         except Exception as e:
-            return conn.send((False, "Could not initialize camera: %s" % str(e), None, None))
+            return conn.send((False, "Could not initialize camera: %s" % str(e), None, None, None))
         
         conn.send((True, cam.width, cam.height, cam.color_mode_d, str(cam.guid)))
         conns[port] = conn

@@ -49,4 +49,4 @@ def calc_pose(points, client):
 
     right_hip = points[24]
     rot = np.rad2deg(np.arctan2(right_hip[2] - hip_center[2], right_hip[0] - hip_center[0]))
-    client.send_rot(3, [0, -rot, 0])
+    client.send_rot(3)

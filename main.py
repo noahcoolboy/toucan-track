@@ -172,7 +172,8 @@ def pose_landmark_thread():
 
         normalized_landmarks = inference.landmark_postprocess(normalized_landmarks, True)
         landmarks = np.stack(normalized_landmarks)
-        landmarks = inference.refine_landmarks(landmarks, heatmap, kernel_size=settings.get("refine_kernel_size", 7), min_conf=settings.get("refine_min_score", 0.5))
+        if settings.get("refine_landmarks", False):
+            landmarks = inference.refine_landmarks(landmarks, heatmap, kernel_size=settings.get("refine_kernel_size", 7), min_conf=settings.get("refine_min_score", 0.5))
         landmarks = inference.denormalize_landmarks(landmarks, [values[i][1] for i in range(cam_count)])
         
         pose_landmark_queue.put((landmarks, f, [values[i][2] for i in range(cam_count)]), block=True)

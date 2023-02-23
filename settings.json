@@ -51,8 +51,11 @@
     "undistort": true, // Wether to undistort the camera images to accomodate for lens distortion.
     "pose_det_min_score": 0.75, // The minimum confidence score for the pose detection model to detect a person.
     "pose_lm_min_score": 0.35, // The mininum confidence score for the pose landmark model for a person being in the image.
+    // Landmark refinement is currently having issues when your face is covered (like your VR headset). So it's disabled by default.
+    "refine_landmarks": false, // Wether to refine the landmarks using the heatmap.
     "refine_kernel_size": 7, // The size of the kernel used to refine the keypoints (from the heatmap).
     "refine_min_score": 0.5, // The minimum confidence for the heatmap to be used for refining the keypoints.
+    
     "draw_pose": false, // Wether to draw a 3d skeleton visualization.
     // Note: The scale multiplier can be found by modifying using the "Real User Height" setting.
     //       First, adjust the height for your feet to touch the ground (while standing upright).

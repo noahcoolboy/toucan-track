@@ -443,7 +443,7 @@ def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
         
         confs = heatmap[b][begin_rows[i]:end_rows[i], begin_cols[i]:end_cols[i], l]
         confs = sigmoid(confs)
-        
+
         sum = np.sum(confs)
         max_conf = np.max(confs)
         weighted_col = np.sum(np.arange(begin_cols[i], end_cols[i]) * confs)
@@ -454,3 +454,25 @@ def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
             landmarks[b][l][1] = weighted_row / sum / hm_height
 
     return landmarks
+
+
+def autoflip_point(idL, prev, cur, thresh):
+    idR = idL + 1 # MediaPipe uses odd numbers for left and even numbers for right
+    # Check if the points are far enough apart
+    if np.linalg.norm(cur[idL][:2] - cur[idR][:2]) < thresh:
+        return
+    
+    # Check if the flipped points are close enough
+    # This means the AI messed up the left/right assignment
+    if np.linalg.norm(prev[idL][:2] - cur[idR][:2]) < thresh and np.linalg.norm(prev[idR][:2] - cur[idL][:2]) < thresh:
+        cur[idL][:2], cur[idR][:2] = cur[idR][:2], cur[idL][:2]
+
+
+def autoflip(prev_frames, current_frames, thresh):
+    for prev, cur in zip(prev_frames, current_frames):
+        autoflip_point(11, prev, cur, thresh) # Shoulder
+        autoflip_point(13, prev, cur, thresh) # Elbow
+        autoflip_point(15, prev, cur, thresh) # Wrist
+        autoflip_point(23, prev, cur, thresh) # Hip
+        autoflip_point(25, prev, cur, thresh) # Knee
+        autoflip_point(27, prev, cur, thresh) # Ankle

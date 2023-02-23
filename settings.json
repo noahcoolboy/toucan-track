@@ -51,10 +51,17 @@
     "undistort": true, // Wether to undistort the camera images to accomodate for lens distortion.
     "pose_det_min_score": 0.75, // The minimum confidence score for the pose detection model to detect a person.
     "pose_lm_min_score": 0.35, // The mininum confidence score for the pose landmark model for a person being in the image.
-    // Landmark refinement is currently having issues when your face is covered (like your VR headset). So it's disabled by default.
-    "refine_landmarks": false, // Wether to refine the landmarks using the heatmap.
+    
+    "refine_landmarks": true, // Wether to refine the landmarks using the heatmap.
     "refine_kernel_size": 7, // The size of the kernel used to refine the keypoints (from the heatmap).
     "refine_min_score": 0.5, // The minimum confidence for the heatmap to be used for refining the keypoints.
+
+    // Flip detection is an experimental setting which attempts to detect whenever the AI mixes up the left and right side.
+    // This happens because the face is covered by the VR headset, which causes instability in the pose landmark model.
+    // The left point of the previous frame gets compared to the right point of the current frame, and vice versa.
+    // If the distance is smaller than the "flip_detection_max" setting, the points are flipped.
+    "flip_detection": false,
+    "flip_detection_max": 10,
     
     "draw_pose": false, // Wether to draw a 3d skeleton visualization.
     // Note: The scale multiplier can be found by modifying using the "Real User Height" setting.

@@ -158,6 +158,9 @@ def pose_det_post_thread():
 # Thread to run inference on the pose landmark model
 def pose_landmark_thread():
     global roi
+
+    prev_landmarks = None
+    prev_t = None
     
     while running:
         values = pose_det_post_queue.get(block=True)
@@ -172,9 +175,14 @@ def pose_landmark_thread():
 
         normalized_landmarks = inference.landmark_postprocess(normalized_landmarks, True)
         landmarks = np.stack(normalized_landmarks)
-        if settings.get("refine_landmarks", False):
+        if settings.get("refine_landmarks", True):
             landmarks = inference.refine_landmarks(landmarks, heatmap, kernel_size=settings.get("refine_kernel_size", 7), min_conf=settings.get("refine_min_score", 0.5))
         landmarks = inference.denormalize_landmarks(landmarks, [values[i][1] for i in range(cam_count)])
+
+        if settings.get("flip_detection", False) and prev_landmarks is not None and time.time() - prev_t < 0.1:
+            inference.autoflip(prev_landmarks, landmarks, settings.get("flip_detection_max", 10))
+        prev_landmarks = landmarks
+        prev_t = time.time()
         
         pose_landmark_queue.put((landmarks, f, [values[i][2] for i in range(cam_count)]), block=True)
 

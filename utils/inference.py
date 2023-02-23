@@ -420,40 +420,37 @@ def landmarks_to_roi(landmarks):
 def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
     # Adapted from
     # https://github.com/google/mediapipe/blob/master/mediapipe/calculators/util/refine_landmarks_from_heatmap_calculator.cc
+    # heatmap: (batch, height, width, landmarks)
     offset = (kernel_size - 1) / 2
 
     hm_height = heatmap.shape[1]
     hm_width = heatmap.shape[2]
 
-    for i in range(len(landmarks)):
-        for j in range(len(landmarks[i])):
-            center_col = landmarks[i][j][0] * hm_width
-            center_row = landmarks[i][j][1] * hm_height
-            
-            if center_col < 0 or center_col >= hm_width or center_row < 0 or center_row > hm_height:
-                continue
+    center_cols = landmarks[:, :, 0] * hm_width
+    center_rows = landmarks[:, :, 1] * hm_height
 
-            begin_col = math.floor(max(0, center_col - offset))
-            end_col = math.ceil(min(hm_width, center_col + offset))
-            begin_row = math.floor(max(0, center_row - offset))
-            end_row = math.ceil(min(hm_height, center_row + offset))
+    refinement_needed = np.logical_and(np.logical_and(center_cols >= 0, center_cols < hm_width), np.logical_and(center_rows >= 0, center_rows < hm_height))
+    refinement_needed = np.where(refinement_needed)
 
-            sum = 0
-            weighted_col = 0
-            weighted_row = 0
-            max_conf = 0
+    begin_cols = np.floor(np.maximum(0, center_cols[refinement_needed] - offset)).astype(int)
+    end_cols = np.floor(np.minimum(hm_width, center_cols[refinement_needed] + offset + 1)).astype(int)
+    begin_rows = np.floor(np.maximum(0, center_rows[refinement_needed] - offset)).astype(int)
+    end_rows = np.floor(np.minimum(hm_height, center_rows[refinement_needed] + offset + 1)).astype(int)
+    
+    for i in range(len(refinement_needed[0])):
+        b = refinement_needed[0][i]
+        l = refinement_needed[1][i]
+        
+        confs = heatmap[b][begin_rows[i]:end_rows[i], begin_cols[i]:end_cols[i], l]
+        confs = sigmoid(confs)
+        
+        sum = np.sum(confs)
+        max_conf = np.max(confs)
+        weighted_col = np.sum(np.arange(begin_cols[i], end_cols[i]) * confs)
+        weighted_row = np.sum(np.arange(begin_rows[i], end_rows[i]) * confs.T)
 
-            for row in range(begin_row, end_row):
-                for col in range(begin_col, end_col):
-                    conf = heatmap[i][row][col][j]
-                    conf = sigmoid(conf)
-                    sum += conf
-                    max_conf = max(max_conf, conf)
-                    weighted_col += col * conf
-                    weighted_row += row * conf
-
-            if max_conf >= min_conf and sum > 0:
-                landmarks[i][j][0] = weighted_col / sum / hm_width
-                landmarks[i][j][1] = weighted_row / sum / hm_height
+        if max_conf >= min_conf and sum > 0:
+            landmarks[b][l][0] = weighted_col / sum / hm_width
+            landmarks[b][l][1] = weighted_row / sum / hm_height
 
     return landmarks

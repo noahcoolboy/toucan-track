@@ -40,15 +40,18 @@ When you're done fine tuning the settings, run `python main.py`. This will run T
 
 ### Tips
 * Unable to get a good intrinsic calibration?
+  * Stick the calibration pattern on a flat surface (like cardboard)! Holding the paper by hand will cause calibration issues.
   * Increase `mono_calibration_frames`. This will take more pictures of the calibration pattern, and therefore increase calibration accuracy.
   * Make sure the calibration pattern isn't too far or close to the camera, the checkerboard won't be detected otherwise!
   * Turn off `assume_accurate` so you can manually review the detected checkerboard points.
   * Try putting the calibration pattern at different distances and angles from the camera.
 * Unable to get a good extrinsic calibration?
+  * Stick the calibration pattern on a flat surface (like cardboard)! Holding the paper by hand will cause calibration issues.
   * Print out the calibration pattern on a bigger paper! It's possible the cameras aren't able to detect the pattern as it is too small.
   * Make sure to have measured and configured `checkerboard_columns`, `checkerboard_rows` and `checkerboard_box_size_scale` correctly.
   * Try putting the calibration pattern at different distances and angles from the cameras.
 * Unable to get a good origin calibration?
+  * Make sure the aruco marker is perfectly flat (on the ground or on a flat surface).
   * Put the aruco marker as close as possible to the cameras, while still staying perfectly flat. (Eg. [like this](https://user-images.githubusercontent.com/46800081/220600125-41898c07-ae69-418e-b9ae-4a79d0f7e601.png))
   * Make sure the blue line points towards the direction you would normally face when playing VRChat.
   * Make sure to measure and configure `aruco_size` correctly!
@@ -56,6 +59,7 @@ When you're done fine tuning the settings, run `python main.py`. This will run T
   * Bad lighting might cause problems. Try turning on your room's light's and closing the windows (to avoid lighting from outside).
   * Wear clothes which do not blend with the background and stay tight on the skin. Loose clothing might throw off the tracking.
   * Adjust the settings for better keypoint smoothing. The default settings do a pretty good job at avoiding jittering.
+  * Verify your calibration by setting `draw_pose` to true, and facing the camera directly. Make sure the skeleton in the pose faces the southeast direction ([like this](https://user-images.githubusercontent.com/46800081/220957758-152a0cca-a5df-49da-afd9-11cd2503a369.png)). If the skeleton is not facing the correct direction or upside down, modify `flip_x`, `flip_y` and `flip_z` in the settings. If the skeleton is bent or not standing up straight, something has gone wrong during calibration.
 * Trackers go too far / not far enough?
   * Make sure you have configured `checkerboard_box_size_scale` and `aruco_size` correctly during the calibration process. Remember the values should be in centimeters, and not inches.
   * Configure `scale_multiplier` in the settings.

@@ -66,7 +66,7 @@ def cam_thread(id):
     while running:
         frame = cameras[id].get_frame()
         if settings.get("undistort", True):
-            cv2.undistort(frame, oncm[id][0], oncm[id][1], None, oncm[id][2])
+            frame = cv2.undistort(frame, oncm[id][0], oncm[id][1], None, oncm[id][2])
         frame.flags.writeable = False
 
         cam_queue.put((id, frame), block=True)

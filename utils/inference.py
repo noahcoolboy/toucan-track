@@ -422,14 +422,14 @@ def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
     # https://github.com/google/mediapipe/blob/master/mediapipe/calculators/util/refine_landmarks_from_heatmap_calculator.cc
     offset = (kernel_size - 1) / 2
 
-    hm_width = heatmap.shape[3]
-    hm_height = heatmap.shape[2]
+    hm_height = heatmap.shape[1]
+    hm_width = heatmap.shape[2]
 
     for i in range(len(landmarks)):
         for j in range(len(landmarks[i])):
-            center_col = int(landmarks[i][j][0]) * hm_width
-            center_row = int(landmarks[i][j][1]) * hm_height
-
+            center_row = max(min(math.floor(landmarks[i][j][0] * hm_height), hm_height - 1), 0)
+            center_col = max(min(math.floor(landmarks[i][j][1] * hm_width), hm_width - 1), 0)
+            
             if center_col < 0 or center_col >= hm_width or center_row < 0 or center_row > hm_height:
                 continue
 
@@ -445,7 +445,7 @@ def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
 
             for row in range(begin_row, end_row):
                 for col in range(begin_col, end_col):
-                    conf = heatmap[i][j][row][col]
+                    conf = heatmap[i][row][col][j]
                     conf = sigmoid(conf)
                     sum += conf
                     max_conf = max(max_conf, conf)

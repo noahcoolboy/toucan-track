@@ -427,8 +427,8 @@ def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
 
     for i in range(len(landmarks)):
         for j in range(len(landmarks[i])):
-            center_row = max(min(math.floor(landmarks[i][j][0] * hm_height), hm_height - 1), 0)
-            center_col = max(min(math.floor(landmarks[i][j][1] * hm_width), hm_width - 1), 0)
+            center_col = landmarks[i][j][0] * hm_width
+            center_row = landmarks[i][j][1] * hm_height
             
             if center_col < 0 or center_col >= hm_width or center_row < 0 or center_row > hm_height:
                 continue

@@ -456,23 +456,25 @@ def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
     return landmarks
 
 
-def autoflip_point(idL, prev, cur, thresh):
+def autoflip_test(idL, prev, cur, thresh):
     idR = idL + 1 # MediaPipe uses odd numbers for left and even numbers for right
     # Check if the points are far enough apart
     if np.linalg.norm(cur[idL][:2] - cur[idR][:2]) < thresh:
-        return
+        return False
     
     # Check if the flipped points are close enough
     # This means the AI messed up the left/right assignment
     if np.linalg.norm(prev[idL][:2] - cur[idR][:2]) < thresh and np.linalg.norm(prev[idR][:2] - cur[idL][:2]) < thresh:
-        cur[idL][:2], cur[idR][:2] = cur[idR][:2], cur[idL][:2]
+        return True
+
+    return False
 
 
 def autoflip(prev_frames, current_frames, thresh):
     for prev, cur in zip(prev_frames, current_frames):
-        autoflip_point(11, prev, cur, thresh) # Shoulder
-        autoflip_point(13, prev, cur, thresh) # Elbow
-        autoflip_point(15, prev, cur, thresh) # Wrist
-        autoflip_point(23, prev, cur, thresh) # Hip
-        autoflip_point(25, prev, cur, thresh) # Knee
-        autoflip_point(27, prev, cur, thresh) # Ankle
+        # Check wrists, elbows, and shoulders
+        if autoflip_test(15, prev, cur, thresh) \
+        and autoflip_test(13, prev, cur, thresh) \
+        and autoflip_test(11, prev, cur, thresh):
+            cur[[1, 2, 3, 4, 5, 6, 7, 8]] = cur[[4, 5, 6, 1, 2, 3, 8, 7]]
+            cur[9::2], cur[10::2] = cur[10::2], cur[9::2]

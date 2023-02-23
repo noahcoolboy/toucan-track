@@ -255,7 +255,7 @@ def triangulation_thread():
         for i in range(39):
             points[i] = smoothing[i].filter(points[i], t)
 
-        pose.calc_pose(points, client)
+        pose.calc_pose(points, client, settings.get("send_rot", False))
 
         if settings.get("draw_pose", False) and settings.get("debug", False):
             draw.update_pose_plot(points)

@@ -23,7 +23,36 @@ def get_foot_rot(knee, ankle, direction):
     return np.rad2deg(rot.as_rotvec())
 
 
-def calc_pose(points, client):
+def get_hip_rot(left_shoulder, right_shoulder, left_hip, right_hip):
+    shoulder_midpoint = (left_shoulder + right_shoulder) / 2
+    hip_midpoint = (left_hip + right_hip) / 2
+    spine_direction = hip_midpoint - shoulder_midpoint
+    spine_direction /= np.linalg.norm(spine_direction)
+    hip_direction = right_hip - left_hip
+    hip_direction /= np.linalg.norm(hip_direction)
+    axis_of_rotation = np.cross(spine_direction, hip_direction)
+    angle_of_rotation = np.arccos(np.dot(spine_direction, hip_direction) / (np.linalg.norm(spine_direction) * np.linalg.norm(hip_direction)))
+    rotation_vector = axis_of_rotation * angle_of_rotation
+    return np.rad2deg(rotation_vector)
+
+
+def calc_pose(points, client, send_rot=False):
+    # Hips
+    direction = 0
+    hip_center = points[33]
+    client.send_pos(3, hip_center)
+
+    if send_rot:
+        left_shoulder = points[11]
+        right_shoulder = points[12]
+        left_hip = points[23]
+        right_hip = points[24]
+        hip_rot = get_hip_rot(left_shoulder, right_shoulder, left_hip, right_hip)
+        direction = hip_rot[0]
+        client.send_rot(3, hip_rot[[1, 0, 2]])
+    else:
+        client.send_rot(3)
+
     # Head
     head_center = (points[7] + points[8]) / 2
     client.send_pos("head", head_center)
@@ -34,19 +63,11 @@ def calc_pose(points, client):
     client.send_pos(1, left_ankle)
     client.send_pos(2, right_ankle)
 
-    client.send_rot(1, get_foot_rot(left_knee, left_ankle, 0))
-    client.send_rot(2, get_foot_rot(right_knee, right_ankle, 0))
+    client.send_rot(1, get_foot_rot(left_knee, left_ankle, direction))
+    client.send_rot(2, get_foot_rot(right_knee, right_ankle, direction))
 
     # Knees
     client.send_pos(4, left_knee)
     client.send_pos(5, right_knee)
     client.send_rot(4)
     client.send_rot(5)
-
-    # Hips
-    hip_center = points[33]
-    client.send_pos(3, hip_center)
-
-    right_hip = points[24]
-    rot = np.rad2deg(np.arctan2(right_hip[2] - hip_center[2], right_hip[0] - hip_center[0]))
-    client.send_rot(3)

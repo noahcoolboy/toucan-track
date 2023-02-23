@@ -73,5 +73,6 @@
     "flip_x": true,
     "flip_y": false,
     "flip_z": false,
-    "swap_xz": false
+    "swap_xz": false,
+    "send_rot": false // Once you achieve a good calibration, you can start sending rotation data. (experimental)
 }

@@ -9,7 +9,7 @@ Cloning the github library and installing the required libraries:
 ```bash
 git clone https://github.com/noahcoolboy/toucan-track.git
 cd toucan-track
-pip install pythonosc numpy opencv-contrib-python scipy onnxruntime pyjson5
+pip install python-osc numpy opencv-contrib-python scipy onnxruntime pyjson5
 ```
 
 Install the [CL-Eye Driver](https://drive.google.com/uc?export=download&id=1O8yER02vQ-PgeF20N0nfid1GeEduyhvk) and [CL-Eye Platform SDK](https://www.dropbox.com/s/7bxw2dlj0t88qj5/CL-Eye-Platform-SDK-1.6.4.0028.exe?dl=1).  

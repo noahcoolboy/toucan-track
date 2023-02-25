@@ -109,15 +109,13 @@ def calibrate_camera_for_intrinsic_parameters(images_prefix):
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         #find the checkerboard
-        ret, corners = cv.findChessboardCorners(gray, (rows, columns), None)
+        ret, corners = cv.findChessboardCornersSB(gray, (rows, columns), None, cv.CALIB_CB_EXHAUSTIVE | cv.CALIB_CB_ACCURACY)
 
         if ret == True:
 
             #Convolution size used to improve corner detection. Don't make this too large.
             conv_size = (11, 11)
 
-            #opencv can attempt to improve the checkerboard coordinates
-            corners = cv.cornerSubPix(gray, corners, conv_size, (-1, -1), criteria)
             cv.drawChessboardCorners(frame, (rows,columns), corners, ret)
             cv.putText(frame, 'If detected points are poor, press "s" to skip this sample', (25, 25), cv.FONT_HERSHEY_COMPLEX, 1, (0,0,255), 1)
 
@@ -279,13 +277,13 @@ def stereo_calibrate(mtx0, dist0, mtx1, dist1, frames_prefix_c0, frames_prefix_c
     for frame0, frame1 in zip(c0_images, c1_images):
         gray1 = cv.cvtColor(frame0, cv.COLOR_BGR2GRAY)
         gray2 = cv.cvtColor(frame1, cv.COLOR_BGR2GRAY)
-        c_ret1, corners1 = cv.findChessboardCorners(gray1, (rows, columns), None)
-        c_ret2, corners2 = cv.findChessboardCorners(gray2, (rows, columns), None)
+        c_ret1, corners1 = cv.findChessboardCornersSB(gray1, (rows, columns), None, cv.CALIB_CB_EXHAUSTIVE | cv.CALIB_CB_ACCURACY)
+        c_ret2, corners2 = cv.findChessboardCornersSB(gray2, (rows, columns), None, cv.CALIB_CB_EXHAUSTIVE | cv.CALIB_CB_ACCURACY)
 
         if c_ret1 == True and c_ret2 == True:
 
-            corners1 = cv.cornerSubPix(gray1, corners1, (11, 11), (-1, -1), criteria)
-            corners2 = cv.cornerSubPix(gray2, corners2, (11, 11), (-1, -1), criteria)
+            #corners1 = cv.cornerSubPix(gray1, corners1, (11, 11), (-1, -1), criteria)
+            #corners2 = cv.cornerSubPix(gray2, corners2, (11, 11), (-1, -1), criteria)
 
             p0_c1 = corners1[0,0].astype(np.int32)
             p0_c2 = corners2[0,0].astype(np.int32)

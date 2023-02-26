@@ -33,12 +33,7 @@ if(cam_count > 2):
 
 cameras = []
 for i in range(cam_count):
-    cameras.append(camera.Camera(cam_count - i - 1,
-        settings.get("color", 1) + camera.CLEyeCameraColorMode.CLEYE_MONO_RAW,
-        settings.get("resolution", 1),
-        fps, debug=True
-    ))
-cameras.reverse()
+    cameras.append((camera.Camera(i, res, fps, camera.ps3eye_format.PS3EYE_FORMAT_BGR)))
 
 oncm = []
 for i in range(cam_count):

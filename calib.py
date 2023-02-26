@@ -9,7 +9,7 @@ import time
 import camera.binding as camera
 
 calibration_settings = {
-    "resolution": camera.CLEyeCameraResolution.CLEYE_VGA, # 640x480, pick QVGA for 320x240
+    "resolution": (640, 480), # 640x480 or 320x240
     "mono_calibration_frames": 50,
     "stereo_calibration_frames": 50,
     "assume_accurate": True, # Skips manual validation of checkerboard detection
@@ -30,7 +30,7 @@ def save_frames_single_camera(camera_name):
     number_to_save = calibration_settings['mono_calibration_frames']
     cooldown_time = calibration_settings['cooldown']
 
-    cap = camera.Camera(camera_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cap = camera.Camera(camera_name, calibration_settings['resolution'], 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
     
     cooldown = cooldown_time
     start = False
@@ -175,9 +175,8 @@ def save_frames_two_cams(camera0_name, camera1_name):
     columns = calibration_settings['checkerboard_rows']
 
     #open the video streams
-    cap1 = camera.Camera(camera1_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
-    time.sleep(0.5)
-    cap0 = camera.Camera(camera0_name, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cap0 = camera.Camera(camera0_name, calibration_settings['resolution'], 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
+    cap1 = camera.Camera(camera1_name, calibration_settings['resolution'], 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
 
     cooldown = cooldown_time
     start = False
@@ -369,14 +368,13 @@ def get_depth(proj0, proj1, points0, points1):
     return point3d
 
 def check_calibration(cmtx0, R0, T0, cmtx1, R1, T1):
-    cam1 = camera.Camera(1, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
-    time.sleep(0.5)
-    cam0 = camera.Camera(0, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cam0 = camera.Camera(0, calibration_settings['resolution'], 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
+    cam1 = camera.Camera(1, calibration_settings['resolution'], 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
 
     P0 = cmtx0 @ _make_homogeneous_rep_matrix(R0, T0)[:3,:]
     P1 = cmtx1 @ _make_homogeneous_rep_matrix(R1, T1)[:3,:]
 
-    res = (640, 480) if calibration_settings["resolution"] == camera.CLEyeCameraResolution.CLEYE_VGA else (320, 240)
+    res = calibration_settings["resolution"]
     optimal_cmtx0, roi0 = cv.getOptimalNewCameraMatrix(cmtx0, dist0, res, 1, res)
     optimal_cmtx1, roi1 = cv.getOptimalNewCameraMatrix(cmtx1, dist1, res, 1, res)
 
@@ -419,12 +417,12 @@ def del_f():
 def calibrate_origin(cmtx, dist):
     from cv2 import aruco
 
-    cam0 = camera.Camera(0, camera.CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, calibration_settings["resolution"], 50)
+    cam0 = camera.Camera(0, calibration_settings['resolution'], 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
     
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
     parameters = aruco.DetectorParameters()
     detector = aruco.ArucoDetector(dictionary, parameters)
-    res = (640, 480) if calibration_settings["resolution"] == 1 else (320, 240)
+    res = calibration_settings["resolution"]
     optimal_cmtx, roi0 = cv.getOptimalNewCameraMatrix(cmtx, dist, res, 1, res)
 
     while True:

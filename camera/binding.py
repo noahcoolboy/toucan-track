@@ -1,164 +1,88 @@
-# I have not found any better way of doing this.
-# Since CLEyeMulticam.dll is a 32-bit DLL, we need to run a 32-bit Python interpreter.
-# Processes communicate with each other using multiprocessing.connection.
-
 import ctypes
-import subprocess
-import time
-import numpy as np
 import os
-import multiprocessing.connection
-import multiprocessing.shared_memory
-import cv2
+import numpy as np
+dll = ctypes.CDLL(os.path.join(os.path.dirname(__file__), 'PS3EyeDriverMSVC.dll'))
 
-class CLEyeCameraColorMode(int):
-    CLEYE_MONO_PROCESSED = 0
-    CLEYE_COLOR_PROCESSED = 1
-    CLEYE_MONO_RAW = 2
-    CLEYE_COLOR_RAW = 3
-    CLEYE_BAYER_RAW = 4
-
-class CLEyeCameraResolution(int):
-    CLEYE_QVGA = 0 # 320 x 240
-    CLEYE_VGA = 1 # 640 x 480
-
-class CLEyeCameraParameter(int):
-    # Camera sensor parameters
-    CLEYE_AUTO_GAIN = 0 # [false, true]
-    CLEYE_GAIN = 1 # [0, 79]
-    CLEYE_AUTO_EXPOSURE = 2 # [false, true]
-    CLEYE_EXPOSURE = 3 # [0, 511]
-    CLEYE_AUTO_WHITEBALANCE = 4 # [false, true]
-    CLEYE_WHITEBALANCE_RED = 5 # [0, 255]
-    CLEYE_WHITEBALANCE_GREEN = 6 # [0, 255]
-    CLEYE_WHITEBALANCE_BLUE = 7 # [0, 255]
-    # Camera linear transform parameters
-    CLEYE_HFLIP = 8 # [false, true]
-    CLEYE_VFLIP = 9 # [false, true]
-    CLEYE_HKEYSTONE = 10 # [-500, 500]
-    CLEYE_VKEYSTONE = 11 # [-500, 500]
-    CLEYE_XOFFSET = 12 # [-500, 500]
-    CLEYE_YOFFSET = 13 # [-500, 500]
-    CLEYE_ROTATION = 14 # [-500, 500]
-    CLEYE_ZOOM = 15 # [-500, 500]
-    # Camera non-linear transform parameters
-    CLEYE_LENSCORRECTION1 = 16 # [-500, 500]
-    CLEYE_LENSCORRECTION2 = 17 # [-500, 500]
-    CLEYE_LENSCORRECTION3 = 18 # [-500, 500]
-    CLEYE_LENSBRIGHTNESS = 19 # [-500, 500]
-
-cdir = os.path.dirname(__file__)
-process = None
-server = None
-ports = []
+class ps3eye_parameter(ctypes.c_int):
+    PS3EYE_AUTO_GAIN = 0
+    PS3EYE_GAIN = 1
+    PS3EYE_AUTO_WHITEBALANCE = 2
+    PS3EYE_EXPOSURE = 3
+    PS3EYE_SHARPNESS = 4
+    PS3EYE_CONTRAST = 5
+    PS3EYE_BRIGHTNESS = 6
+    PS3EYE_HUE = 7
+    PS3EYE_REDBALANCE = 8
+    PS3EYE_BLUEBALANCE = 9
+    PS3EYE_GREENBALANCE = 10
+    PS3EYE_HFLIP = 11
+    PS3EYE_VFLIP = 12
 
 
-def start_camera_server(debug):
-    global process, server
-    if server:
-        return server
-    
-    port = 6004
-    process = subprocess.Popen(
-        [os.path.join(cdir, "python3.8", "python.exe"), os.path.join(cdir, "camera.py"), str(port)],
-        creationflags=subprocess.CREATE_NEW_CONSOLE if debug else 0,
-        start_new_session=True,
-        env=dict(os.environ, PYDEVD_DISABLE_FILE_VALIDATION="1")
-    )
-    server = multiprocessing.connection.Client(('localhost', port))
-    port += 1
-    return server
+class ps3eye_format(ctypes.c_int):
+    PS3EYE_FORMAT_RGB = 0
+    PS3EYE_FORMAT_BGR = 1
+    PS3EYE_FORMAT_RAW = 2
 
 
-def stop_camera_server():
-    global process, server, ports
-    if server:
-        server.send(("exit",))
-        server.recv()
-        server.close()
-        server = None
-    
-    if process and process.poll() is None:
-        process.terminate()
-        process.wait()
-        process = None
+dll.ps3eye_open.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ps3eye_format]
+dll.ps3eye_open.restype = ctypes.c_void_p
+dll.ps3eye_grab_frame.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+dll.ps3eye_close.argtypes = [ctypes.c_void_p]
+dll.ps3eye_set_parameter.argtypes = [ctypes.c_void_p, ps3eye_parameter, ctypes.c_int]
+dll.ps3eye_get_parameter.argtypes = [ctypes.c_void_p, ctypes.c_int]
+dll.ps3eye_get_unique_identifier.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
 
-    ports = []
+dll.ps3eye_init()
 
-
-def get_first_available_port():
-    global ports
-    port = 6005
-    while True:
-        if port not in ports:
-            ports.append(port)
-            return port
-        port += 1
-
-
-def get_camera_count(debug=True):
-    server = start_camera_server(debug)
-    server.send(("cam_count",))
-    return server.recv()
-
+def get_camera_count():
+    return dll.ps3eye_count_connected()
 
 class Camera:
-    def __init__(self, camera_id, color_mode, resolution, frame_rate, debug=True):
-        self.port = get_first_available_port()
+    def __init__(self, nid, resolution, frame_rate, format):
+        self.nid = int(nid)
+        self.resolution = resolution
+        self.frame_rate = frame_rate
+        self.format = format
+        self.camera = dll.ps3eye_open(self.nid, resolution[0], resolution[1], frame_rate, format)
+        self.uid = None
 
-        server = start_camera_server(debug)
-        server.send(("init", self.port, int(camera_id), color_mode, resolution, frame_rate))
-        succ, err = server.recv()
-        
-        if not succ:
-            raise Exception("Could not start camera thread: " + str(err))
-
-        self.client = multiprocessing.connection.Client(('localhost', self.port))
-        succ, self.width, self.height, self.color_mode_d, self.guid = self.client.recv()
-
-        if not succ:
-            raise Exception("Could not start camera: " + str(self.width))
-
-        # Default settings
-        self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_GAIN, True)
-        self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_EXPOSURE, True)
-        self.set_parameter(CLEyeCameraParameter.CLEYE_AUTO_WHITEBALANCE, True)
-
-        self.framebuf = multiprocessing.shared_memory.SharedMemory(name="framebufmem" + str(self.guid))
+        self.set_parameter(ps3eye_parameter.PS3EYE_AUTO_GAIN, 1)
+        self.set_parameter(ps3eye_parameter.PS3EYE_AUTO_WHITEBALANCE, 1)
+    
+    def set_parameter(self, parameter, value):
+        return dll.ps3eye_set_parameter(self.camera, parameter, value)
+    
+    def get_parameter(self, parameter):
+        return dll.ps3eye_get_parameter(self.camera, parameter)
     
     def get_frame(self):
-        self.client.send(("get_frame",))
-        self.client.recv()
+        c = ctypes.create_string_buffer(self.resolution[0]*self.resolution[1]*3)
+        dll.ps3eye_grab_frame(self.camera, c)
+        img = np.frombuffer(bytes(c), dtype=np.uint8).reshape((self.resolution[1], self.resolution[0], 3))
+        return img
+    
+    def close(self):
+        dll.ps3eye_close(self.camera)
+
+    def get_uid(self):
+        if self.uid is None:
+            b = ctypes.create_string_buffer(32)
+            dll.ps3eye_get_unique_identifier(self.camera, b, 32)
+            self.uid = b.value.decode('utf-8')
         
-        return np.frombuffer(bytes(self.framebuf.buf), dtype=np.uint8).reshape((self.height, self.width, self.color_mode_d))
+        return self.uid
     
-    def set_parameter(self, param, value):
-        self.client.send(("set_parameter", param, value))
-        return self.client.recv()
-    
-    def get_parameter(self, param):
-        self.client.send(("get_parameter", param))
-        return self.client.recv()
-
-    def set_led(self, value):
-        self.client.send(("set_led", value))
-        return self.client.recv()
-
-    def __del__(self):
-        try:
-            # Release shared memory
-            self.framebuf.close()
-            self.client.send(("exit",))
-            self.client.recv()
-        except:
-            pass
-
+    __del__ = close
 
 if __name__ == "__main__":
+    import time
+    import cv2
+
     fps = 50
     cameras = []
-    for i in range(2):
-        cameras.append(Camera(i, CLEyeCameraColorMode.CLEYE_COLOR_PROCESSED, CLEyeCameraResolution.CLEYE_VGA, fps))
+    for i in range(get_camera_count()):
+        cameras.append(Camera(i, (640, 480), fps, ps3eye_format.PS3EYE_FORMAT_BGR))
 
     start = time.time()
     framesc = 0
@@ -176,6 +100,7 @@ if __name__ == "__main__":
         for i, frame in enumerate(frames):
             cv2.imshow("frame" + str(i), frame)
         
-    stop_camera_server()
+    for camera in cameras:
+        camera.close()
 
     cv2.destroyAllWindows()

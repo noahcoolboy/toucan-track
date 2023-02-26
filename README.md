@@ -12,8 +12,7 @@ cd toucan-track
 pip install python-osc numpy opencv-contrib-python scipy onnxruntime pyjson5
 ```
 
-Install the [CL-Eye Driver](https://drive.google.com/uc?export=download&id=1O8yER02vQ-PgeF20N0nfid1GeEduyhvk) and [CL-Eye Platform SDK](https://www.dropbox.com/s/7bxw2dlj0t88qj5/CL-Eye-Platform-SDK-1.6.4.0028.exe?dl=1).  
-Make sure no other PS3 Camera Driver is currently installed on your computer.
+Follow these instructions for downloading the PS3 Eye Camera drivers: https://github.com/opentrack/opentrack/wiki/PS3-Eye-open-driver-instructions
 
 
 ### Calibration

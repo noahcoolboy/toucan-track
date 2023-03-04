@@ -73,7 +73,10 @@ class Camera:
         
         return self.uid
     
+    # Misc
     __del__ = close
+    def read(self):
+        return True, self.get_frame()
 
 if __name__ == "__main__":
     import time

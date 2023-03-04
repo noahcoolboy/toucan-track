@@ -3,7 +3,6 @@
     "ip": "192.168.1.110", // Local IP address of the headset to send OSC positions to.
     "port": 9000, // OSC port
     "debug": true, // Shows debug gui. (May bottleneck FPS, use when having issues)
-    "resolution": 1,  // 0 = 320x240, 1 = 640x480
     "fps": 50, // Sets the framerate of the camera.
     "model": 2, // Sets the landmark model. 0 = lite, 1 = full, 2 = heavy
     

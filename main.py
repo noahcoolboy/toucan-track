@@ -17,6 +17,8 @@ import camera.binding as camera
 settings = pyjson5.decode_io(open("settings.json", "r"))
 client = client.OSCClient(settings["ip"], settings.get("port", 9000))
 
+calib = pyjson5.decode_io(open("calib.json", "r"))
+
 model = ["lite", "full", "heavy"][settings.get("model", 1)]
 det_sess = onnxruntime.InferenceSession("models/pose_detection.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 landmark_sess = onnxruntime.InferenceSession(f"models/pose_landmark_{model}_batched.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
@@ -25,15 +27,15 @@ running = True
 
 #region Camera Initialization
 fps = settings.get("fps", 50)
-res = (640, 480) if settings.get("resolution", 1) == 1 else (320, 240)
+res = (640, 480)
 
 cam_count = 2
 if(cam_count > 2):
     print("Support for more than 2 cameras is not supported yet.")
 
 cameras = []
-for i in range(cam_count):
-    cameras.append((camera.Camera(i, res, fps, camera.ps3eye_format.PS3EYE_FORMAT_BGR)))
+for i in range(len(calib["cameras"])):
+    cameras.append(vision.get_cam(calib["cameras"][i]["type"], calib["cameras"][i]["id"]))
 
 oncm = []
 for i in range(cam_count):

@@ -238,6 +238,15 @@ def calibrate_extrinsics():
                         lastseen[i] = min(5, lastseen[i] + 0.1)
                         
                     frame = cv2.addWeighted(frame, 1, colors[int(lastseen[i])], 0.1, 0)
+
+                    if i == 0 and len(corners) > 0:
+                        ret, rvec, tvec = cv2.solvePnP(np.array([[0, 0, 0], [s, 0, 0], [s, 0, s], [0, 0, s]], dtype=np.float32), corners[0][0], cmtx, dist)
+                        imgpts, jac = cv2.projectPoints(np.array([[0, 0, 0], [s, 0, 0], [0, s, 0], [0, 0, s]], dtype=np.float32), rvec, tvec, cmtx, dist)
+
+                        imgpts = np.int32(imgpts).squeeze()
+                        frame = cv2.line(frame, imgpts[0], imgpts[1], (0,0,255), 3)
+                        frame = cv2.line(frame, imgpts[0], imgpts[2], (0,255,0), 3)
+                        frame = cv2.line(frame, imgpts[0], imgpts[3], (255,0,0), 3)
                 else:
                     if len(corners) > 0 and len(extrinsics[i]['rvecs']) < t:
                         ret, rvec, tvec = cv2.solvePnP(np.array([[0, 0, 0], [s, 0, 0], [s, 0, s], [0, 0, s]], dtype=np.float32), corners[0][0], cmtx, dist)

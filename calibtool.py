@@ -192,7 +192,7 @@ def calibrate_extrinsics():
     extrinsics = [{ } for i in range(len(cameras))]
 
     colors = [np.full((480, 640, 3), (0, (5-i) * 51, i * 51), dtype=np.uint8) for i in range(6)]
-    lastseen = [0 for i in range(len(cameras))]
+    lastseen = [5 for i in range(len(cameras))]
 
     dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
     parameters = aruco.DetectorParameters()
@@ -215,7 +215,7 @@ def calibrate_extrinsics():
             for i in range(len(cameras)):
                 extrinsics[i]["rvecs"] = []
                 extrinsics[i]["tvecs"] = []
-            lastseen = [0 for i in range(len(cameras))]
+            lastseen = [5 for i in range(len(cameras))]
             continue
 
         img = np.zeros((480, 640, 3), np.uint8)
@@ -248,7 +248,7 @@ def calibrate_extrinsics():
                         frame = cv2.line(frame, imgpts[0], imgpts[2], (0,255,0), 3)
                         frame = cv2.line(frame, imgpts[0], imgpts[3], (255,0,0), 3)
 
-                        extrinsics[i]["rvecs"].append(rvec)
+                        extrinsics[i]["rvecs"].append(cv2.Rodrigues(rvec)[0])
                         extrinsics[i]["tvecs"].append(tvec)
                     
                     cv2.putText(frame, f"Captured {len(extrinsics[i]['rvecs'])}/{t} frames", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)

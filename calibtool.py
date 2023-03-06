@@ -88,10 +88,10 @@ def settings():
     
     if event == "save":
         s = calib["settings"]
-        s["checkerboard_box_size_scale"] = int(values["checkerboard_box_size_scale"])
+        s["checkerboard_box_size_scale"] = float(values["checkerboard_box_size_scale"])
         s["checkerboard_columns"] = int(values["checkerboard_columns"])
         s["checkerboard_rows"] = int(values["checkerboard_rows"])
-        s["aruco_size"] = int(values["aruco_size"])
+        s["aruco_size"] = float(values["aruco_size"])
         s["mono_calibration_frames"] = int(values["mono_calibration_frames"])
         s["stereo_calibration_frames"] = int(values["stereo_calibration_frames"])
         s["aruco_calibration_frames"] = int(values["aruco_calibration_frames"])

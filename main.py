@@ -29,9 +29,7 @@ running = True
 fps = settings.get("fps", 50)
 res = (640, 480)
 
-cam_count = 2
-if(cam_count > 2):
-    print("Support for more than 2 cameras is not supported yet.")
+cam_count = len(calib["cameras"])
 
 cameras = []
 for i in range(len(calib["cameras"])):
@@ -42,7 +40,8 @@ for i in range(cam_count):
     cmtx, dist = vision.read_camera_parameters(i)
     rvec, tvec = vision.read_rotation_translation(i)
     optimal_cmtx, roi0 = cv2.getOptimalNewCameraMatrix(cmtx, dist, res, 1, res)
-    oncm.append((cmtx, dist, optimal_cmtx, rvec, tvec))
+    proj = vision.get_projection_matrix(i)
+    oncm.append((cmtx, dist, optimal_cmtx, rvec, tvec, proj))
 #endregion
 
 #region Multithreading Setup
@@ -188,7 +187,7 @@ def pose_landmark_thread():
 def pose_landmark_post_thread():
     global roi
 
-    smoothing = [[filters.get_filter(settings.get("2d_filter"), fps, 4) for _ in range(39)] for _ in range(cam_count)]
+    smoothing = [[filters.get_filter(settings.get("2d_filter"), fps, 2) for _ in range(39)] for _ in range(cam_count)]
 
     while running and (not settings.get("debug", False) or cv2.waitKey(1) != 27):
         landmarks, flags, imgs = pose_landmark_queue.get(block=True)
@@ -199,7 +198,7 @@ def pose_landmark_post_thread():
         t = time.time() * 1000
         for i in range(cam_count):
             for j in range(39):
-                landmarks[i][j] = smoothing[i][j].filter(landmarks[i][j], t)
+                landmarks[i][j][:2] = smoothing[i][j].filter(landmarks[i][j][:2], t)
 
             values.append((imgs[i], landmarks[i], flags[i]))
 
@@ -210,9 +209,6 @@ def pose_landmark_post_thread():
         
         pose_landmark_post_queue.put(values, block=True)
 
-
-proj0 = vision.get_projection_matrix(0)
-proj1 = vision.get_projection_matrix(1)
 
 if settings.get("draw_pose", False) and settings.get("debug", False):
     draw.init_pose_plot()
@@ -238,7 +234,7 @@ def triangulation_thread():
             frames = 0
         
         # Calculate and smooth 3D points
-        points = vision.get_depth(proj0, proj1, values[0][1][:, 0:2].transpose(), values[1][1][:, 0:2].transpose()) 
+        points = vision.get_depth(oncm, values, multicam_val=settings.get("multicam_val", 0.75))
         points = points.squeeze() / 100 # (39, 3)
         
         points = points * settings.get("scale_multiplier", 1)

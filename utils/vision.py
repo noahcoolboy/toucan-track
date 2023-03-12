@@ -33,7 +33,43 @@ def get_projection_matrix(camera_id):
     P = cmtx @ _make_homogeneous_rep_matrix(rvec, tvec)[:3,:]
     return P
 
-def get_depth(proj0, proj1, points0, points1):
-    point3d = cv2.triangulatePoints(proj0, proj1, points0, points1)
-    point3d = cv2.convertPointsFromHomogeneous(point3d.T)
-    return point3d
+def triangulate(proj, points):
+    n_views = len(proj)
+    A = np.zeros((2 * n_views, 4))
+    for j in range(n_views):
+        A[j * 2 + 0] = points[j][0] * proj[j][2, :] - proj[j][0, :]
+        A[j * 2 + 1] = points[j][1] * proj[j][2, :] - proj[j][1, :]
+
+    u, s, vh =  np.linalg.svd(A, full_matrices=False)
+    point_3d_homo = vh[3, :]
+
+    #point_3d = homogeneous_to_euclidean(point_3d_homo)
+    point_3d = point_3d_homo
+
+    return point_3d
+
+def get_depth(oncm, values, multicam_val=0.75):
+    num_views = len(oncm)
+    num_keypoints = len(values[0][1])
+
+    proj = np.array([oncm[i][5] for i in range(len(oncm))])
+    points_2d = np.array([values[i][1] for i in range(len(values))]).transpose(1, 0, 2)
+
+    points = np.zeros((num_keypoints, 4))
+    for i in range(num_keypoints):
+        idx = np.arange(num_views)
+        if num_views > 2:
+            if multicam_val > 1:
+                # Get the best of N cameras
+                idx = np.argsort(points_2d[i, :, 3])[:multicam_val]
+            else:
+                # Get the cameras with confidence above a threshold
+                idx = np.where(points_2d[i, :, 3] > multicam_val)[0]
+        
+        if len(idx) > 1:
+            points[i] = triangulate(proj[idx], points_2d[i][idx])
+        else:
+            points[i] = triangulate(proj, points_2d[i])
+
+    points3d = cv2.convertPointsFromHomogeneous(points)
+    return points3d

@@ -4,7 +4,7 @@
     "port": 9000, // OSC port
     "debug": true, // Shows debug gui. (May bottleneck FPS, use when having issues)
     "fps": 50, // Sets the framerate of the camera.
-    "model": 2, // Sets the landmark model. 0 = lite, 1 = full, 2 = heavy
+    "model": 1, // Sets the landmark model. 0 = lite, 1 = full, 2 = heavy
     
 
     /* FILTERING OPTIONS
@@ -45,12 +45,20 @@
         "dcutoff": 1.0
     },
 
+    /* MULTICAM SETTINGS */
+    // Settings to use when using more than 2 cameras.
+    // When multicam_val is smaller than 0, all points with a confidence score
+    // higher than multicam_val will be used for triangulation.
+    // If multicam_val is greater than 0, N points with the highest confidence
+    // score will be used for triangulation.
+    "multicam_val": 0.625,
+
     /* ADVANCED SETTINGS */
     "undistort": true, // Wether to undistort the camera images to accomodate for lens distortion.
     "pose_det_min_score": 0.75, // The minimum confidence score for the pose detection model to detect a person.
     "pose_lm_min_score": 0.35, // The mininum confidence score for the pose landmark model for a person being in the image.
     
-    "refine_landmarks": true, // Wether to refine the landmarks using the heatmap.
+    "refine_landmarks": false, // Wether to refine the landmarks using the heatmap. (doesn't work well currently)
     "refine_kernel_size": 7, // The size of the kernel used to refine the keypoints (from the heatmap).
     "refine_min_score": 0.5, // The minimum confidence for the heatmap to be used for refining the keypoints.
 

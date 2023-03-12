@@ -255,7 +255,8 @@ def landmark_postprocess(landmarks, aux = True):
             z = xx[j * 5 + 2] / 256
             visibility = xx[j * 5 + 3]
             presence = xx[j * 5 + 4]
-            normalized_landmarks[i, j] = (x, y, z, sigmoid(min(visibility, presence)))
+            #normalized_landmarks[i, j] = (x, y, z, sigmoid(min(visibility, presence)))
+            normalized_landmarks[i, j] = (x, y, z, sigmoid(visibility))
 
     return normalized_landmarks
 

@@ -72,5 +72,6 @@
     "flip_y": false,
     "flip_z": false,
     "swap_xz": false,
-    "send_rot": false // Once you achieve a good calibration, you can start sending rotation data. (experimental)
+    "send_rot": false, // Uses the calculated 3d points for calculation hip rotation. Does not work well due to the AI model!
+    "owotrack": false // Use owotrack for hip rotation
 }

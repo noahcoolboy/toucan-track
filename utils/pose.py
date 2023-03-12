@@ -1,5 +1,6 @@
 # Calculate and send pose tracker position and rotation based on keypoints location
 import numpy as np
+from . import owotrack
 from scipy.spatial.transform import Rotation as R
 
 def get_foot_rot(knee, ankle, direction):
@@ -35,6 +36,13 @@ def get_hip_rot(left_shoulder, right_shoulder, left_hip, right_hip):
     rotation_vector = axis_of_rotation * angle_of_rotation
     return np.rad2deg(rotation_vector)
 
+owotrack_server = None
+def start_owotrack_server():
+    global owotrack_server
+
+    if owotrack_server is None:
+        owotrack_server = owotrack.OwoTrackServer(6969)
+
 
 def calc_pose(points, client, send_rot=False):
     # Hips
@@ -42,6 +50,9 @@ def calc_pose(points, client, send_rot=False):
     hip_center = points[33]
     client.send_pos(3, hip_center)
 
+    if owotrack_server and owotrack_server.connected:
+        #direction = owotrack_server.rotation[0]
+        client.send_rot(3, owotrack_server.rotation)
     if send_rot:
         left_shoulder = points[11]
         right_shoulder = points[12]

@@ -217,6 +217,9 @@ proj1 = vision.get_projection_matrix(1)
 if settings.get("draw_pose", False) and settings.get("debug", False):
     draw.init_pose_plot()
 
+if settings.get("owotrack", False):
+    pose.start_owotrack_server()
+
 # Calculate pose from 3d points and send it to the OSC server
 def triangulation_thread():
     start = time.time()

@@ -9,7 +9,7 @@ Cloning the github library and installing the required libraries:
 ```bash
 git clone https://github.com/noahcoolboy/toucan-track.git
 cd toucan-track
-pip install python-osc numpy opencv-contrib-python scipy onnxruntime pyjson5 pysimplegui
+pip install python-osc numpy opencv-contrib-python scipy onnxruntime pyjson5 pysimplegui matplotlib
 ```
 
 Follow these instructions for downloading the PS3 Eye Camera drivers: https://github.com/opentrack/opentrack/wiki/PS3-Eye-open-driver-instructions
@@ -56,4 +56,7 @@ When you're done fine tuning the settings, run `python main.py`. This will run T
 * Trackers go too far / not far enough?
   * Make sure you have configured `Checkerboard Box Size` and `Aruco Size` correctly during the calibration process. Remember the values should be in centimeters, and not inches.
   * Configure `scale_multiplier` in the settings.
+* What does `UserWarning: Specified provider 'CUDAExecutionProvider' is not in available provider names.Available` mean?
+  * It means your CPU is being used for AI inference (and not your GPU). This has an impact on performance.
+    Run `pip install onnxruntime-gpu`, install [CUDA Toolkit](https://developer.nvidia.com/cuda-11-6-0-download-archive?target_os=Windows&target_arch=x86_64), and follow the instructions for installing [cuDNN](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html#install-windows).
 * Other problems? Contact me on discord (noah#8315) or on reddit (u/Noahcoolbot) and I will gladly help.

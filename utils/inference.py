@@ -24,15 +24,15 @@ def resize_pad(img):
 
     size0 = img.shape
     if size0[0] >= size0[1]:
-        h1 = 256
-        w1 = 256 * size0[1] // size0[0]
+        h1 = 224
+        w1 = 224 * size0[1] // size0[0]
         padh = 0
-        padw = 256 - w1
+        padw = 224 - w1
         scale = size0[1] / w1
     else:
-        h1 = 256 * size0[0] // size0[1]
-        w1 = 256
-        padh = 256 - h1
+        h1 = 224 * size0[0] // size0[1]
+        w1 = 224
+        padh = 224 - h1
         padw = 0
         scale = size0[0] / h1
 
@@ -43,9 +43,9 @@ def resize_pad(img):
     img1 = cv2.resize(img, (w1, h1))
     img1 = np.pad(img1, ((padh1, padh2), (padw1, padw2), (0, 0)), mode='constant')
     pad = (int(padh1 * scale), int(padw1 * scale))
-    img2 = cv2.resize(img1, (224, 224))
+    #img2 = cv2.resize(img1, (224, 224))
 
-    return img1, img2, scale, pad
+    return img1, scale, pad
 
 
 def decode_boxes(raw_boxes, anchors):
@@ -423,30 +423,31 @@ def refine_landmarks(landmarks, heatmap, kernel_size = 7, min_conf = 0.5):
     # https://github.com/google/mediapipe/blob/master/mediapipe/calculators/util/refine_landmarks_from_heatmap_calculator.cc
     # heatmap: (batch, height, width, landmarks)
     offset = (kernel_size - 1) / 2
-
+    
     hm_height = heatmap.shape[1]
     hm_width = heatmap.shape[2]
-
-    center_cols = landmarks[:, :, 0] * hm_width
-    center_rows = landmarks[:, :, 1] * hm_height
+    
+    center_cols = np.uint8(landmarks[:, :, 0] * hm_width)
+    center_rows = np.uint8(landmarks[:, :, 1] * hm_height)
 
     refinement_needed = np.logical_and(np.logical_and(center_cols >= 0, center_cols < hm_width), np.logical_and(center_rows >= 0, center_rows < hm_height))
     refinement_needed = np.where(refinement_needed)
-
-    begin_cols = np.floor(np.maximum(0, center_cols[refinement_needed] - offset)).astype(int)
-    end_cols = np.floor(np.minimum(hm_width, center_cols[refinement_needed] + offset + 1)).astype(int)
-    begin_rows = np.floor(np.maximum(0, center_rows[refinement_needed] - offset)).astype(int)
-    end_rows = np.floor(np.minimum(hm_height, center_rows[refinement_needed] + offset + 1)).astype(int)
+    
+    begin_cols = np.maximum(0, center_cols[refinement_needed] - offset).astype(int)
+    end_cols = np.minimum(hm_width, center_cols[refinement_needed] + offset + 1).astype(int)
+    begin_rows = np.maximum(0, center_rows[refinement_needed] - offset).astype(int)
+    end_rows = np.minimum(hm_height, center_rows[refinement_needed] + offset + 1).astype(int)
     
     for i in range(len(refinement_needed[0])):
-        b = refinement_needed[0][i]
-        l = refinement_needed[1][i]
+        b = refinement_needed[0][i] # Batch
+        l = refinement_needed[1][i] # Landmark
         
         confs = heatmap[b][begin_rows[i]:end_rows[i], begin_cols[i]:end_cols[i], l]
         confs = sigmoid(confs)
 
         sum = np.sum(confs)
         max_conf = np.max(confs)
+        
         weighted_col = np.sum(np.arange(begin_cols[i], end_cols[i]) * confs)
         weighted_row = np.sum(np.arange(begin_rows[i], end_rows[i]) * confs.T)
 

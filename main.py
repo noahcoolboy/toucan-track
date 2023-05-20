@@ -20,8 +20,10 @@ client = client.OSCClient(settings["ip"], settings.get("port", 9000))
 calib = pyjson5.decode_io(open("calib.json", "r"))
 
 model = ["lite", "full", "heavy"][settings.get("model", 1)]
+suppress_warnings = onnxruntime.SessionOptions()
+suppress_warnings.log_severity_level = 3
 det_sess = onnxruntime.InferenceSession("models/pose_detection.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
-landmark_sess = onnxruntime.InferenceSession(f"models/pose_landmark_{model}_batched.onnx", providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+landmark_sess = onnxruntime.InferenceSession(f"models/pose_landmark_{model}_batched.onnx", suppress_warnings, providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
 
 running = True
 
@@ -87,12 +89,10 @@ def pose_det_pre_thread():
 
         # If we have a ROI, we can skip the detection step
         # This ROI is given be the landmark detection
-        if roi:
+        if roi is not None:
             # A copy of the roi variable is made to avoid the ROI being nullified while the image is being cropped
-            roib = roi
+            roib = roi.copy()
             for i in range(cam_count):
-                if not roib[i]:
-                    break
                 xc, yc, scale, theta = roib[i]
                 # Images get cropped according to the ROI
                 img2, affine, _ = inference.extract_roi(imgs[i], 
@@ -102,17 +102,17 @@ def pose_det_pre_thread():
                     np.array([scale])
                 )
                 values.append((img2[0], affine[0], imgs[i]))
-            else:
-                # Images get put on the pose_det_post_queue directly, skipping the pose detection step
-                # As the images have already been cropped to fit the person
-                pose_det_post_queue.put(values, block=True)
-                continue
+
+            # Images get put on the pose_det_post_queue directly, skipping the pose detection step
+            # As the images have already been cropped to fit the person
+            pose_det_post_queue.put(values, block=True)
+            continue
         
         values = []
         # Crops the image to 224x224 for a round of pose detection
         for i in range(cam_count):
-            _, img224, scale, pad = inference.resize_pad(imgs[i])
-            img224 = img224.astype('float32') / 255.
+            img224, scale, pad = inference.resize_pad(imgs[i])
+            img224 = img224.astype('float32') / 128. - 1.
             values.append((img224, scale, pad, imgs[i]))
         pose_det_pre_queue.put(values, block=True)
 
@@ -160,8 +160,8 @@ def pose_landmark_thread():
     
     while running:
         values = pose_det_post_queue.get(block=True)
-        output = landmark_sess.run(["Identity", "Identity_1", "Identity_2", "Identity_3", "Identity_4"], {"input_1": [values[i][0] for i in range(cam_count)]})
-        normalized_landmarks, f, _, heatmap, _ = output
+        output = landmark_sess.run(["Identity", "Identity_1", "Identity_3"], {"input_1": [values[i][0].transpose(2, 0, 1) for i in range(cam_count)]})
+        normalized_landmarks, f, heatmap = output
 
         # If the confidence of the pose detection (on any of the images) is too low, we can't continue
         # The ROI is also removed as no one was found in it

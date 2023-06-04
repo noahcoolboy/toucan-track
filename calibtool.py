@@ -33,14 +33,16 @@ def save_calib():
 def get_cam(type, id):
     if type == "PS3 Eye Camera":
         return camera.Camera(id, (640, 480), 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
+    else:
+        return cv2.VideoCapture(id+700) #open camera at id with the directshow API (700). Note that same camera is not always on the same id, so this needs a better way.
 
 def add_camera():
     ids = list(range(camera.get_camera_count()))
 
     add_camera_layout = [
         [sg.Text('Add Camera', font="SegoeUI 16", justification='center')],
-        [sg.Text('Camera Type:', font="SegoeUI 12"), sg.Combo(values=["PS3 Eye Camera"], key="camtype", readonly=True, default_value="PS3 Eye Camera")],
-        [sg.Text('Camera ID:', font="SegoeUI 12"), sg.Combo(values=ids, key="camid", readonly=True, default_value=ids[0])],
+        [sg.Text('Camera Type:', font="SegoeUI 12"), sg.Combo(values=["PS3 Eye Camera", "other"], key="camtype", readonly=True, default_value="PS3 Eye Camera")],
+        [sg.Text('Camera ID:', font="SegoeUI 12"), sg.Combo(values=[0,1,2,3], key="camid", readonly=True, default_value=ids[0])],
         [sg.Text('Name (optional):', font="SegoeUI 12"), sg.Input(key="camname", size=(15, 1))],
         [sg.Button('Add', key="add"), sg.Button('Cancel', key="cancel")]
     ]
@@ -137,6 +139,7 @@ def calibrate_intrinsics(cam, cap):
 
         ret, frame = cap.read()
         if ret:
+            frame = cv2.rotate(frame,2)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             ret2, corners = cv2.findChessboardCornersSB(gray, (rows, columns), None, cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY)
             if ret2 == True:
@@ -222,6 +225,7 @@ def calibrate_extrinsics():
         n = math.ceil(math.sqrt(len(cameras)))
         for i, cam in enumerate(cameras):
             ret, frame = cam.read()
+            frame = cv2.rotate(frame,2) #rotate camera sideways, as that gives more vertical space. Should be a setting somewhere
             if ret:
                 if "intrinsics" in calib["cameras"][i]:
                     cmtx, dist, opt_cmtx = np.array(calib["cameras"][i]["intrinsics"]["cmtx"]), np.array(calib["cameras"][i]["intrinsics"]["dist"]), np.array(calib["cameras"][i]["intrinsics"]["opt_cmtx"])
@@ -236,7 +240,8 @@ def calibrate_extrinsics():
                         lastseen[i] = 0
                     else:
                         lastseen[i] = min(5, lastseen[i] + 0.1)
-                        
+                      
+                    colors = [np.full(frame.shape, (0, (5-i) * 51, i * 51), dtype=np.uint8) for i in range(6)] #since the image is no longer always 640x480, we change the size to frame.shape
                     frame = cv2.addWeighted(frame, 1, colors[int(lastseen[i])], 0.1, 0)
 
                     if i == 0 and len(corners) > 0:
@@ -357,13 +362,17 @@ while True:
         save_calib()
     
     elif event == "extrinsics":
-        cap.__del__()
+        #cap.__del__()              #this caused a crash. Works okay without?
         calibrate_extrinsics()
         save_calib()
         update_camera_list()
     
     elif cap:
-        frame = cap.get_frame()
+
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        frame = cv2.rotate(frame,2) #rotate camera sideways, as that gives more vertical space. Should be a setting somewhere
         if "intrinsics" in cam:
             cmtx, dist, opt_cmtx = np.array(cam["intrinsics"]["cmtx"]), np.array(cam["intrinsics"]["dist"]), np.array(cam["intrinsics"]["opt_cmtx"])
             frame = cv2.undistort(frame, cmtx, dist, None, opt_cmtx)

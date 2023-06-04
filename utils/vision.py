@@ -10,6 +10,8 @@ with open("calib.json", "r") as f:
 def get_cam(type, id):
     if type == "PS3 Eye Camera":
         return camera.Camera(id, (640, 480), 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
+    else:
+        return cv2.VideoCapture(id+700) #open camera at id with the directshow API (700). Note that same camera is not always on the same id, so this needs a better way.
 
 def _make_homogeneous_rep_matrix(R, t):
     P = np.zeros((4,4))

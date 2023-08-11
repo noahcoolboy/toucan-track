@@ -28,7 +28,7 @@ landmark_sess = onnxruntime.InferenceSession(f"models/pose_landmark_{model}_batc
 running = True
 
 #region Camera Initialization
-fps = settings.get("fps", 50)
+fps = settings.get("fps", 30)   #change default fps to 30
 res = (640, 480)
 
 cam_count = len(calib["cameras"])
@@ -62,7 +62,8 @@ cam_sync = threading.Event()
 # A cam_thread gets spun up for each camera for being able to fetch frames in parallel
 def cam_thread(id):
     while running:
-        frame = cameras[id].get_frame()
+        _, frame = cameras[id].read()   #.read() is general for both cv2 and ps eyes
+        frame = cv2.rotate(frame,2)     #rotate camera sideways, as that gives more vertical space. Should be a setting somewhere
         if settings.get("undistort", True):
             frame = cv2.undistort(frame, oncm[id][0], oncm[id][1], None, oncm[id][2])
         frame.flags.writeable = False

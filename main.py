@@ -160,7 +160,7 @@ def pose_landmark_thread():
     
     while running:
         values = pose_det_post_queue.get(block=True)
-        output = landmark_sess.run(["Identity", "Identity_1", "Identity_3"], {"input_1": [values[i][0].transpose(2, 0, 1) for i in range(cam_count)]})
+        output = landmark_sess.run(["Identity", "Identity_1", "Identity_3"], {"input_1": [values[i][0] for i in range(cam_count)]})
         normalized_landmarks, f, heatmap = output
 
         # If the confidence of the pose detection (on any of the images) is too low, we can't continue

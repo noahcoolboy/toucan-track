@@ -2,6 +2,7 @@
 import numpy as np
 from . import owotrack
 from scipy.spatial.transform import Rotation as R
+from utils.draw import KEYPOINT_DICT
 
 def get_foot_rot(knee, ankle, direction):
     # Calculate the unit vector from the ankle to the knee
@@ -47,17 +48,17 @@ def start_owotrack_server():
 def calc_pose(points, client, send_rot=False):
     # Hips
     direction = 0
-    hip_center = points[33]
+    hip_center = (points[KEYPOINT_DICT["left_hip"]] + points[KEYPOINT_DICT["right_hip"]]) / 2
     client.send_pos(3, hip_center)
 
     if owotrack_server and owotrack_server.connected:
         #direction = owotrack_server.rotation[0]
         client.send_rot(3, owotrack_server.rotation)
     if send_rot:
-        left_shoulder = points[11]
-        right_shoulder = points[12]
-        left_hip = points[23]
-        right_hip = points[24]
+        left_shoulder = points[KEYPOINT_DICT["left_shoulder"]]
+        right_shoulder = points[KEYPOINT_DICT["right_shoulder"]]
+        left_hip = points[KEYPOINT_DICT["left_hip"]]
+        right_hip = points[KEYPOINT_DICT["right_hip"]]
         hip_rot = get_hip_rot(left_shoulder, right_shoulder, left_hip, right_hip)
         direction = hip_rot[0]
         client.send_rot(3, hip_rot[[1, 0, 2]])
@@ -65,12 +66,12 @@ def calc_pose(points, client, send_rot=False):
         client.send_rot(3)
 
     # Head
-    head_center = (points[7] + points[8]) / 2
+    head_center = (points[KEYPOINT_DICT["left_ear"]] + points[KEYPOINT_DICT["left_ear"]]) / 2
     client.send_pos("head", head_center)
     client.send_rot("head", [0, 0, 0])
     
     # Ankles
-    left_knee, right_knee, left_ankle, right_ankle = points[25:29]
+    left_knee, right_knee, left_ankle, right_ankle = points[KEYPOINT_DICT["left_knee"]:KEYPOINT_DICT["right_ankle"] + 1]
     client.send_pos(1, left_ankle)
     client.send_pos(2, right_ankle)
 

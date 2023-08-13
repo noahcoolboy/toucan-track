@@ -66,10 +66,10 @@
     // This happens because the face is covered by the VR headset, which causes instability in the pose landmark model.
     // The left point of the previous frame gets compared to the right point of the current frame, and vice versa.
     // If the distance is smaller than the "flip_detection_max" setting, the points are flipped.
-    "flip_detection": false,
+    "flip_detection": true,
     "flip_detection_max": 10,
     
-    "draw_pose": true, // Wether to draw a 3d skeleton visualization.
+    "draw_pose": false, // Wether to draw a 3d skeleton visualization.
     // Note: The scale multiplier can be found by modifying using the "Real User Height" setting.
     //       First, adjust the height for your feet to touch the ground (while standing upright).
     //       Next, start the FBT calibration mode, and adjust the "Real User Height" setting until

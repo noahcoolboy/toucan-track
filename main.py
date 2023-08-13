@@ -70,6 +70,10 @@ def cam_thread(id):
 # Post processing thread for the detection model
 def pose_landmark_thread():
     global roi
+
+    prev_landmarks = None
+    prev_t = 0
+
     while running:
         frames = [cam_queue.get(block=True) for i in range(cam_count)]
         frames.sort(key=lambda x: x[0])
@@ -107,6 +111,10 @@ def pose_landmark_thread():
                 roi = None
                 break
         else:
+            if settings.get("flip_detection", False) and prev_landmarks is not None and time.time() - prev_t < 0.1:
+                inference.autoflip(prev_landmarks, results, settings.get("flip_detection_max", 10))
+            prev_landmarks = results
+            prev_t = time.time()
             pose_landmark_queue.put((results, confs, frames), block=True)
             continue
 

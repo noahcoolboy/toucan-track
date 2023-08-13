@@ -165,3 +165,30 @@ def determine_crop_region(
       }
   else:
     return init_crop_region(image_height, image_width)
+  
+def autoflip_test(idL, prev, cur, thresh):
+    idR = idL + 1 # MediaPipe uses odd numbers for left and even numbers for right
+    # Check if the points are far enough apart
+    if np.linalg.norm(cur[idL][:2] - cur[idR][:2]) * 1.5 < thresh:
+        return False
+    
+    # Check if the flipped points are close enough
+    # This means the AI messed up the left/right assignment
+    if np.linalg.norm(prev[idL][:2] - cur[idR][:2]) < thresh and np.linalg.norm(prev[idR][:2] - cur[idL][:2]) < thresh:
+        return True
+
+    return False
+
+
+def autoflip(prev_frames, current_frames, thresh):
+    for prev, cur in zip(prev_frames, current_frames):
+        # Check ankles
+        prev = prev[0][0]
+        cur = cur[0][0]
+        if autoflip_test(15, prev, cur, thresh):
+           cur[[15, 16]] = cur[[16, 15]]
+        #if autoflip_test(15, prev, cur, thresh) \
+        #and autoflip_test(13, prev, cur, thresh) \
+        #and autoflip_test(11, prev, cur, thresh):
+        #    cur[[1, 2, 3, 4, 5, 6, 7, 8]] = cur[[4, 5, 6, 1, 2, 3, 8, 7]]
+        #    cur[9::2], cur[10::2] = cur[10::2], cur[9::2]

@@ -35,7 +35,10 @@ cam_count = len(calib["cameras"])
 
 cameras = []
 for i in range(len(calib["cameras"])):
-    cameras.append(vision.get_cam(calib["cameras"][i]["type"], calib["cameras"][i]["id"]))
+    cameras.append(vision.get_cam(calib["cameras"][i]["type"], calib["cameras"][i]["id"], {
+        "res": res,
+        "fps": fps
+    }))
 
 oncm = []
 for i in range(cam_count):

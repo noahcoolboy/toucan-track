@@ -7,9 +7,9 @@ import camera.binding as camera
 with open("calib.json", "r") as f:
     calib = pyjson5.load(f)
 
-def get_cam(type, id):
+def get_cam(type, id, options={}):
     if type == "PS3 Eye Camera":
-        return camera.Camera(id, (640, 480), 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
+        return camera.Camera(id, options["res"] if "res" in options else (640, 480), options["fps"] if "fps" in options else 50, camera.ps3eye_format.PS3EYE_FORMAT_BGR)
 
 def _make_homogeneous_rep_matrix(R, t):
     P = np.zeros((4,4))

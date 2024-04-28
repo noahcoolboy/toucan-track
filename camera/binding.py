@@ -59,7 +59,7 @@ class Camera:
     def get_frame(self):
         c = ctypes.create_string_buffer(self.resolution[0]*self.resolution[1]*3)
         dll.ps3eye_grab_frame(self.camera, c)
-        img = np.frombuffer(bytes(c), dtype=np.uint8).reshape((self.resolution[1], self.resolution[0], 3))
+        img = np.frombuffer(bytearray(c), dtype=np.uint8).reshape((self.resolution[1], self.resolution[0], 3))
         return img
     
     def close(self):
